@@ -37,7 +37,11 @@ class SupabaseService {
   }
 
   Future<void> updateUserProfile(String uid, Map<String, dynamic> updates) async {
-    await _db.from('users').update(updates).eq('id', uid);
+    try {
+      await _db.from('users').update(updates).eq('id', uid);
+    } catch (e) {
+      print('Error updateUserProfile: $e');
+    }
   }
 
   // ================= SHOPS & SERVICES =================

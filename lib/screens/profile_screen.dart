@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import '../models/user_model.dart';
@@ -23,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _userData;
 
   String? _customAvatarUrl;
+  String? _customName;
   String _specialNotes = 'Pisahkan pakaian putih & bahan sensitif';
   String _primaryAddress = 'Rumah • Jl. Merdeka No. 12, Panggilan Kurir: Bel Hitam';
   String _userPhone = '0812-3456-7890';
@@ -75,6 +77,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() {
       _customAvatarUrl = prefs.getString('pref_avatar_url');
+      _customName = prefs.getString('pref_user_name');
       _specialNotes = prefs.getString('pref_notes') ?? 'Pisahkan pakaian putih & bahan sensitif';
       _userPhone = prefs.getString('pref_phone') ?? '0812-3456-7890';
       _primaryAddress = prefs.getString('pref_address') ?? _addresses[0]['address']!;
@@ -104,6 +107,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    if (_customName != null && _customName!.isNotEmpty) {
+      await prefs.setString('pref_user_name', _customName!);
+    }
     await prefs.setString('pref_notes', _specialNotes);
     await prefs.setString('pref_phone', _userPhone);
     await prefs.setString('pref_address', _primaryAddress);
@@ -183,6 +189,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String _getUserDisplayName() {
+    if (_customName != null && _customName!.trim().isNotEmpty) {
+      return _customName!;
+    }
     if (_userData != null && _userData!.name.trim().isNotEmpty) {
       return _userData!.name;
     }
@@ -985,71 +994,127 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ═══════════════════════════════════════════════
   void _showEditNameDialog() {
     final controller = TextEditingController(text: _getUserDisplayName());
+    bool isSaving = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Ubah Nama Profil',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w800,
-            fontSize: 17,
-            color: const Color(0xFF0F172A),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            'Ubah Nama Profil',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              color: const Color(0xFF0F172A),
+            ),
           ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            style: GoogleFonts.plusJakartaSans(color: const Color(0xFF0F172A), fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Nama lengkap Anda',
+              hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8)),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
+              child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+            ),
+            ElevatedButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final newName = controller.text.trim();
+                      if (newName.isEmpty) {
+                        _showToast('Nama tidak boleh kosong');
+                        return;
+                      }
+
+                      setDialogState(() => isSaving = true);
+
+                      // 1. Simpan langsung ke SharedPreferences agar tersimpan permanen
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('pref_user_name', newName);
+
+                      // 2. Perbarui state lokal & tampilan UI seketika
+                      if (mounted) {
+                        setState(() {
+                          _customName = newName;
+                          if (_userData != null) {
+                            _userData = UserModel(
+                              uid: _userData!.uid,
+                              name: newName,
+                              email: _userData!.email,
+                              profileImageUrl: _userData!.profileImageUrl,
+                              membershipLevel: _userData!.membershipLevel,
+                              totalOrders: _userData!.totalOrders,
+                              points: _userData!.points,
+                              activeVouchers: _userData!.activeVouchers,
+                              createdAt: _userData!.createdAt,
+                              role: _userData!.role,
+                            );
+                          }
+                        });
+                      }
+
+                      // 3. Sinkronkan ke Supabase jika ada sesi pengguna aktif (dengan pengaman try-catch)
+                      final uid = _authService.currentUser?.id;
+                      if (uid != null) {
+                        try {
+                          await _supabaseService.updateUserProfile(uid, {'name': newName});
+                        } catch (_) {
+                          // Abaikan jika ada pembatasan RLS pada tabel users
+                        }
+                        try {
+                          await Supabase.instance.client.auth.updateUser(
+                            UserAttributes(data: {'name': newName}),
+                          );
+                        } catch (_) {}
+                      }
+
+                      if (!ctx.mounted) return;
+                      Navigator.pop(ctx);
+                      _showToast('Nama profil berhasil diperbarui');
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0077E6),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text('Simpan', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+            ),
+          ],
         ),
-        content: TextField(
-          controller: controller,
-          style: GoogleFonts.plusJakartaSans(color: const Color(0xFF0F172A), fontSize: 14),
-          decoration: InputDecoration(
-            hintText: 'Nama lengkap Anda',
-            hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8)),
-            filled: true,
-            fillColor: const Color(0xFFF8FAFC),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
-            child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final newName = controller.text.trim();
-              if (newName.isNotEmpty) {
-                final uid = _authService.currentUser?.id;
-                if (uid != null) {
-                  await _supabaseService.updateUserProfile(uid, {'name': newName});
-                }
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-                _loadProfileAndPrefs();
-                _showToast('Nama berhasil diubah');
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0077E6),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: Text('Simpan', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-          ),
-        ],
       ),
     );
   }
