@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
+import 'home_screen.dart';
 
 class DropoffTrackingPage extends StatefulWidget {
   final String orderId;
@@ -15,22 +18,35 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
   late final AnimationController _pulseController;
   late final AnimationController _entranceController;
   late final Animation<double> _pulseAnimation;
-  int _selectedNavIndex = 2;
+  bool _copied = false;
+
+  // ── Color Theme (Consistent with Washora Light Theme) ──
+  static const Color _primaryBlue = Color(0xFF0077E6);
+  static const Color _blueLight = Color(0xFFEFF6FF);
+  static const Color _surface = Color(0xFFF8FAFC);
+  static const Color _bgCanvas = Color(0xFFEDF2F7);
+  static const Color _textDark = Color(0xFF0F172A);
+  static const Color _textMid = Color(0xFF334155);
+  static const Color _textLight = Color(0xFF64748B);
+  static const Color _textHint = Color(0xFF94A3B8);
+  static const Color _border = Color(0xFFE2E8F0);
+  static const Color _successGreen = Color(0xFF16A34A);
 
   @override
   void initState() {
     super.initState();
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+
+    _pulseAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     _entranceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 800),
     );
     _entranceController.forward();
   }
@@ -42,119 +58,371 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
     super.dispose();
   }
 
-  Widget _buildStaggeredChild({required int index, required Widget child}) {
+  String get _cleanCode {
+    final raw = widget.orderId.toUpperCase().replaceAll('-', '');
+    final part = raw.length > 6 ? raw.substring(0, 6) : raw;
+    return 'DRP-$part';
+  }
+
+  void _copyToClipboard() {
+    Clipboard.setData(ClipboardData(text: _cleanCode));
+    setState(() => _copied = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Text(
+              'Kode Drop-off $_cleanCode berhasil disalin!',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF0F172A),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  void _goToHome() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+      (route) => false,
+    );
+  }
+
+  Widget _staggered({required int index, required Widget child}) {
     final begin = (index * 0.12).clamp(0.0, 0.7);
-    final end = (begin + 0.3).clamp(0.0, 1.0);
-
-    final slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.25), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _entranceController,
-            curve: Interval(begin, end, curve: Curves.easeOutCubic),
-          ),
-        );
-
-    final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+    final end = (begin + 0.35).clamp(0.0, 1.0);
+    final slide = Tween<Offset>(begin: const Offset(0, 0.16), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: Interval(begin, end, curve: Curves.easeOutCubic),
+      ),
+    );
+    final fade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _entranceController,
         curve: Interval(begin, end, curve: Curves.easeOut),
       ),
     );
-
     return SlideTransition(
-      position: slideAnimation,
-      child: FadeTransition(opacity: fadeAnimation, child: child),
+      position: slide,
+      child: FadeTransition(opacity: fade, child: child),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF07162B),
-      body: Stack(
-        children: [
-          // ── Background gradient ──
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF07162B), Color(0xFF0E85D4)],
-                stops: [0.0, 1.0],
-              ),
-            ),
-          ),
-
-          // ── Content ──
-          SafeArea(
-            bottom: false,
+      backgroundColor: _bgCanvas,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Container(
+            color: _surface,
             child: Column(
               children: [
                 _buildHeader(),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                     physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _buildStaggeredChild(
-                          index: 0,
-                          child: _buildStatusCard(),
-                        ),
+                        _staggered(index: 0, child: _buildDropoffTicketCard()),
+                        const SizedBox(height: 16),
+                        _staggered(index: 1, child: _buildStatusCard()),
+                        const SizedBox(height: 16),
+                        _staggered(index: 2, child: _buildOutletCard()),
+                        const SizedBox(height: 16),
+                        _staggered(index: 3, child: _buildTimelineCard()),
+                        const SizedBox(height: 16),
+                        _staggered(index: 4, child: _buildGuidanceCard()),
                         const SizedBox(height: 24),
-                        _buildStaggeredChild(
-                          index: 1,
-                          child: _buildStoreCard(),
-                        ),
-                        const SizedBox(height: 24),
-                        _buildStaggeredChild(
-                          index: 2,
-                          child: _buildLiveProgressCard(),
-                        ),
-                        const SizedBox(height: 80),
                       ],
                     ),
                   ),
                 ),
+                _buildBottomActions(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  //  1. APP HEADER
+  // ═══════════════════════════════════════════════
+  Widget _buildHeader() {
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: _border)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Row(
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _goToHome,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.arrow_back_rounded, color: _textDark, size: 20),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Tiket Drop-off Outlet',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _textDark,
+                    ),
+                  ),
+                  Text(
+                    'Pesanan #${widget.orderId.toUpperCase().substring(0, math.min(8, widget.orderId.length))}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _primaryBlue,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Butuh bantuan? Silakan hubungi kasir outlet atau layanan pelanggan Washora.',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12),
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.help_outline_rounded, color: _textMid, size: 22),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  //  2. DROPOFF TICKET & BARCODE CARD
+  // ═══════════════════════════════════════════════
+  Widget _buildDropoffTicketCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _border),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryBlue.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Top Header Banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF0077E6), Color(0xFF0284C7)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(21),
+                topRight: Radius.circular(21),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'KODE TIKET PENYERAHAN OUTLET',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Aktif',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
 
-          // ── Bottom nav bar ──
-          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomNavBar()),
-        ],
-      ),
-    );
-  }
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Text(
+                  'Tunjukkan kode atau barcode ini ke kasir outlet:',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: _textLight,
+                  ),
+                ),
+                const SizedBox(height: 12),
 
-  // ═══════════════════════════════════════════════
-  //  HEADER
-  // ═══════════════════════════════════════════════
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-          ),
-          Expanded(
-            child: Text(
-              'Order #${widget.orderId.toUpperCase().substring(0, math.min(8, widget.orderId.length))}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+                // Prominent Code Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F7FF),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFBAE6FD)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _cleanCode,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 3.0,
+                          color: _primaryBlue,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _copyToClipboard,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: _copied ? _successGreen : _primaryBlue,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              _copied ? Icons.check_rounded : Icons.copy_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // Simulated Barcode
+                _buildBarcodeDisplay(),
+
+                const SizedBox(height: 12),
+                Text(
+                  '*Kasir akan memindai atau mengetik kode di atas untuk verifikasi barang',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontStyle: FontStyle.italic,
+                    color: _textHint,
+                  ),
+                ),
+              ],
             ),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.more_horiz, color: Colors.white),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBarcodeDisplay() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 48,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(42, (i) {
+                // Procedural widths mimicking standard barcode
+                final widths = [2.0, 1.0, 3.0, 1.0, 4.0, 1.5, 2.5, 1.0];
+                final width = widths[i % widths.length];
+                final isSpace = (i % 7 == 3 || i % 11 == 2);
+                return Container(
+                  width: width,
+                  margin: const EdgeInsets.symmetric(horizontal: 1.2),
+                  color: isSpace ? Colors.transparent : const Color(0xFF0F172A),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _cleanCode.replaceAll('-', ' '),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 4.0,
+              color: const Color(0xFF334155),
+            ),
           ),
         ],
       ),
@@ -162,140 +430,117 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
   }
 
   // ═══════════════════════════════════════════════
-  //  STATUS CARD (washer icon + timer)
+  //  3. STATUS OVERVIEW CARD
   // ═══════════════════════════════════════════════
   Widget _buildStatusCard() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: Stack(
-        alignment: Alignment.center,
+      child: Column(
         children: [
-          // Background glow
-          Positioned(
-            child: Container(
-              width: 128,
-              height: 128,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.1),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    blurRadius: 60,
-                    spreadRadius: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Column(
+          Row(
             children: [
-              // ── Washer ring (static with glow) ──
-              _buildWasherRing(),
-              const SizedBox(height: 16),
-              // ── Estimated time ──
-              Text(
-                'Estimated Time',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  const Text(
-                    '14',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 40,
-                      fontWeight: FontWeight.w900,
-                      height: 1,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'mins',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // ── Status badge ──
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: _pulseAnimation,
-                    builder: (context, child) {
-                      return Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withValues(
-                                alpha: 0.8 * _pulseAnimation.value,
-                              ),
-                              blurRadius: 8,
-                            ),
-                          ],
+              // Store Icon with gentle pulsing glow
+              AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _blueLight,
+                      border: Border.all(
+                        color: _primaryBlue.withValues(alpha: 0.3 * _pulseAnimation.value),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _primaryBlue.withValues(alpha: 0.15 * _pulseAnimation.value),
+                          blurRadius: 14,
+                          spreadRadius: 2,
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Washing in Progress',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      ],
                     ),
-                  ),
-                ],
+                    child: const Icon(
+                      Icons.storefront_rounded,
+                      color: _primaryBlue,
+                      size: 28,
+                    ),
+                  );
+                },
               ),
-              const SizedBox(height: 24),
-              // ── Stats row ──
-              Container(
-                padding: const EdgeInsets.only(top: 24),
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                  ),
-                ),
-                child: Row(
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildStatItem('Load', '6.5 kg'),
-                    _buildStatItem('Temp', '40°C'),
-                    _buildStatItem('Cycle', 'Normal'),
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFFF59E0B),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Menunggu Drop-off',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFD97706),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Silakan Antar ke Outlet',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: _textDark,
+                      ),
+                    ),
+                    Text(
+                      'Bawa pakaian Anda sebelum jam tutup outlet',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: _textLight,
+                      ),
+                    ),
                   ],
                 ),
               ),
+            ],
+          ),
+
+          const SizedBox(height: 18),
+          const Divider(height: 1, color: _border),
+          const SizedBox(height: 16),
+
+          // 3 specs row
+          Row(
+            children: [
+              _buildStatItem('Metode', 'Drop-off Mandiri', Icons.directions_walk_rounded),
+              _buildDivider(),
+              _buildStatItem('Biaya Antar', 'Bebas Biaya', Icons.savings_rounded),
+              _buildDivider(),
+              _buildStatItem('Estimasi', '24 Jam', Icons.access_time_rounded),
             ],
           ),
         ],
@@ -303,70 +548,28 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
     );
   }
 
-  Widget _buildWasherRing() {
-    return Container(
-      width: 128,
-      height: 128,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
-          width: 4,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.15),
-            blurRadius: 30,
-          ),
-        ],
-      ),
-      child: Container(
-        margin: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha: 0.2),
-        ),
-        child: Center(
-          child: Container(
-            width: 96,
-            height: 96,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.black.withValues(alpha: 0.4),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
-                width: 2,
-              ),
-            ),
-            child: const Icon(
-              Icons.local_laundry_service,
-              color: Colors.white,
-              size: 48,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value) {
+  Widget _buildStatItem(String label, String value, IconData icon) {
     return Expanded(
       child: Column(
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
-              fontSize: 12,
-            ),
-          ),
+          Icon(icon, size: 18, color: _primaryBlue),
           const SizedBox(height: 4),
           Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: _textHint,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: _textDark,
             ),
           ),
         ],
@@ -374,125 +577,208 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
     );
   }
 
-  // ═══════════════════════════════════════════════
-  //  COURIER CARD
-  // ═══════════════════════════════════════════════
-  Widget _buildStoreCard() {
+  Widget _buildDivider() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      width: 1,
+      height: 32,
+      color: const Color(0xFFF1F5F9),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  //  4. OUTLET INFORMATION CARD
+  // ═══════════════════════════════════════════════
+  Widget _buildOutletCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        children: [
-          // Avatar kurir
-          Stack(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF0E9CE8), width: 2),
-                ),
-                child: ClipOval(
-                  child: Image.network(
-                    'https://randomuser.me/api/portraits/men/32.jpg',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      color: Colors.white12,
-                      child: const Icon(
-                        Icons.person,
-                        color: Colors.white70,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 2,
-                right: 2,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF22C55E),
-                    border: Border.all(
-                      color: const Color(0xFF07162B),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _border),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
-          const SizedBox(width: 14),
-          // Info kurir
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Budi Santoso',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Lokasi Outlet Tujuan',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: _textDark,
                 ),
-                const SizedBox(height: 4),
-                Row(
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
                   children: [
-                    const Icon(Icons.star, color: Color(0xFFF59E0B), size: 13),
+                    const Icon(Icons.circle, size: 6, color: Color(0xFF16A34A)),
                     const SizedBox(width: 4),
                     Text(
-                      '4.9',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      '  •  Honda Beat B 1234 CD',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12,
+                      'Buka Sekarang',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF16A34A),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          // Chat button
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF0E9CE8),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0E9CE8).withValues(alpha: 0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.chat_bubble_outline,
-                color: Colors.white,
-                size: 18,
               ),
-              padding: EdgeInsets.zero,
-            ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: const Icon(
+                  Icons.store_mall_directory_rounded,
+                  color: Color(0xFF16A34A),
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Washora CleanPro Kemang',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: _textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, size: 14, color: Color(0xFFF59E0B)),
+                        const SizedBox(width: 3),
+                        Text(
+                          '4.9 (1.2k+ ulasan) • 1.2 km dari Anda',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _textLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Jl. Kemang Raya No. 12A, Mampang Prapatan, Jakarta Selatan',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: _textMid,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Jam Layanan Kasir: 08:00 - 21:00 WIB',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _primaryBlue,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Action Buttons: Petunjuk Arah & Hubungi Kasir
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Membuka navigasi Google Maps menuju Washora CleanPro Kemang...',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 12),
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.directions_rounded, size: 16, color: _primaryBlue),
+                  label: Text(
+                    'Petunjuk Arah',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _primaryBlue,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFBAE6FD)),
+                    backgroundColor: const Color(0xFFF0F7FF),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Menghubungi kasir outlet di 0812-3456-7890 via WhatsApp...',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 12),
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Color(0xFF0F172A)),
+                  label: Text(
+                    'Hubungi Kasir',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _textDark,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: _border),
+                    backgroundColor: const Color(0xFFF8FAFC),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -500,80 +786,83 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
   }
 
   // ═══════════════════════════════════════════════
-  //  LIVE PROGRESS TIMELINE
+  //  5. TIMELINE STATUS DROPOFF
   // ═══════════════════════════════════════════════
-  Widget _buildLiveProgressCard() {
+  Widget _buildTimelineCard() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _border),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Live Progress',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Text(
+                'Tahapan Pesanan Drop-off',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: _textDark,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'Real-time',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Text(
+                'Langkah 1 dari 4',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: _primaryBlue,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          // Timeline steps sesuai screenshot
-          _buildTimelineItem(
-            icon: Icons.local_shipping,
-            title: 'Kurir Menuju Lokasi',
-            subtitle: '10:30 AM • Completed',
-            status: _StepStatus.completed,
-            isFirst: true,
+          const SizedBox(height: 18),
+
+          _buildStep(
+            stepNumber: 1,
+            title: 'Siap Diantar ke Outlet',
+            subtitle: 'Bawa pakaian kotor ke outlet dan tunjukkan tiket ini ke kasir.',
+            time: 'Sekarang',
+            isActive: true,
+            isCompleted: false,
+            isLast: false,
           ),
-          _buildTimelineItem(
-            icon: Icons.scale,
-            title: 'Proses Penimbangan',
-            subtitle: '10:45 AM • 6.5kg Verified',
-            status: _StepStatus.completed,
+          _buildStep(
+            stepNumber: 2,
+            title: 'Diterima Kasir & Ditimbang',
+            subtitle: 'Kasir memeriksa pakaian dan mencocokkan berat cucian Anda.',
+            time: 'Menunggu',
+            isActive: false,
+            isCompleted: false,
+            isLast: false,
           ),
-          _buildTimelineItem(
-            icon: Icons.local_laundry_service,
-            title: 'Sedang Dicuci (65%)',
-            subtitle: 'Machine #2 • Est. 14 mins left',
-            status: _StepStatus.active,
-            progressValue: 0.65,
+          _buildStep(
+            stepNumber: 3,
+            title: 'Proses Pencucian & Setrika',
+            subtitle: 'Cucian diproses secara higienis menggunakan deterjen & pewangi premium.',
+            time: 'Menunggu',
+            isActive: false,
+            isCompleted: false,
+            isLast: false,
           ),
-          _buildTimelineItem(
-            icon: Icons.iron,
-            title: 'Proses Setrika',
-            subtitle: 'Pending',
-            status: _StepStatus.pending,
-          ),
-          _buildTimelineItem(
-            icon: Icons.local_shipping,
-            title: 'Siap Diantar',
-            subtitle: 'Estimated 2:00 PM',
-            status: _StepStatus.pending,
+          _buildStep(
+            stepNumber: 4,
+            title: 'Selesai & Siap Diambil di Outlet',
+            subtitle: 'Notifikasi akan dikirim saat cucian wangi & rapi siap diambil kembali.',
+            time: 'Estimasi Besok',
+            isActive: false,
+            isCompleted: false,
             isLast: true,
           ),
         ],
@@ -581,177 +870,112 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
     );
   }
 
-  Widget _buildTimelineItem({
-    required IconData icon,
+  Widget _buildStep({
+    required int stepNumber,
     required String title,
     required String subtitle,
-    required _StepStatus status,
-    double? progressValue,
-    bool isFirst = false,
-    bool isLast = false,
+    required String time,
+    required bool isActive,
+    required bool isCompleted,
+    required bool isLast,
   }) {
-    final isCompleted = status == _StepStatus.completed;
-    final isActive = status == _StepStatus.active;
-    final isPending = status == _StepStatus.pending;
+    final Color circleColor = isCompleted
+        ? _successGreen
+        : isActive
+            ? _primaryBlue
+            : const Color(0xFFF1F5F9);
+
+    final Color iconTextColor = (isCompleted || isActive) ? Colors.white : _textHint;
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Timeline column (line + circle) ──
+          // Step indicator column
           SizedBox(
-            width: 40,
+            width: 32,
             child: Column(
               children: [
-                // Circle node
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
+                    color: circleColor,
                     shape: BoxShape.circle,
-                    color: isActive
-                        ? Colors.white
-                        : Colors.black.withValues(
-                            alpha: isCompleted ? 0.4 : 0.2,
-                          ),
-                    border: Border.all(
-                      color: isActive
-                          ? Colors.white
-                          : isCompleted
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.2),
-                      width: 2,
-                    ),
                     boxShadow: isActive
                         ? [
                             BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.6),
-                              blurRadius: 20,
-                            ),
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              spreadRadius: 2,
-                            ),
-                          ]
-                        : isCompleted
-                        ? [
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.3),
+                              color: _primaryBlue.withValues(alpha: 0.35),
                               blurRadius: 10,
+                              offset: const Offset(0, 3),
                             ),
                           ]
                         : null,
                   ),
-                  child: Icon(
-                    icon,
-                    color: isActive
-                        ? const Color(0xFF0E9CE8)
-                        : isCompleted
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.4),
-                    size: isActive ? 20 : 16,
+                  child: Center(
+                    child: isCompleted
+                        ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
+                        : Text(
+                            '$stepNumber',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: iconTextColor,
+                            ),
+                          ),
                   ),
                 ),
-                // Connecting line
                 if (!isLast)
                   Expanded(
                     child: Container(
                       width: 2,
                       margin: const EdgeInsets.symmetric(vertical: 4),
-                      decoration: BoxDecoration(
-                        gradient: isCompleted || isActive
-                            ? LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.white,
-                                  isActive
-                                      ? Colors.white.withValues(alpha: 0.0)
-                                      : Colors.white,
-                                ],
-                              )
-                            : null,
-                        color: isPending
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : null,
-                        boxShadow: isCompleted
-                            ? [
-                                BoxShadow(
-                                  color: Colors.white.withValues(alpha: 0.5),
-                                  blurRadius: 5,
-                                ),
-                              ]
-                            : null,
-                      ),
+                      color: isCompleted ? _successGreen : _border,
                     ),
                   ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          // ── Content ──
+          const SizedBox(width: 14),
+
+          // Content column
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 32, top: 4),
-              child: Opacity(
-                opacity: isPending ? 0.5 : 1.0,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: isActive
-                            ? Colors.white
-                            : isCompleted
-                            ? Colors.white.withValues(alpha: 0.6)
-                            : Colors.white.withValues(alpha: 0.5),
-                        fontSize: isActive ? 16 : 14,
-                        fontWeight: isActive
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        decoration: isCompleted
-                            ? TextDecoration.lineThrough
-                            : null,
-                        decorationColor: Colors.white.withValues(alpha: 0.4),
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                          color: isActive ? _textDark : _textMid,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: isActive
-                            ? Colors.white.withValues(alpha: 0.9)
-                            : Colors.white.withValues(alpha: 0.35),
-                        fontSize: 12,
-                        fontWeight: isActive
-                            ? FontWeight.w500
-                            : FontWeight.normal,
-                      ),
-                    ),
-                    // Progress bar for active step
-                    if (progressValue != null) ...[
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: 128,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: progressValue,
-                            minHeight: 4,
-                            backgroundColor: Colors.black.withValues(
-                              alpha: 0.3,
-                            ),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
+                      Text(
+                        time,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isActive ? _primaryBlue : _textHint,
                         ),
                       ),
                     ],
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: _textLight,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -761,75 +985,134 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
   }
 
   // ═══════════════════════════════════════════════
-  //  BOTTOM NAV BAR
+  //  6. GUIDANCE TIPS
   // ═══════════════════════════════════════════════
-  Widget _buildBottomNavBar() {
+  Widget _buildGuidanceCard() {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.9),
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-        ),
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFEF3C7)),
       ),
-      padding: EdgeInsets.only(
-        top: 8,
-        bottom: 8 + MediaQuery.of(context).padding.bottom,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildNavItem(Icons.home, 'Home', 0),
-          _buildNavItem(Icons.receipt_long, 'Order', 1),
-          _buildNavItem(Icons.local_shipping, 'Track', 2),
-          _buildNavItem(Icons.history, 'History', 3),
-          _buildNavItem(Icons.person, 'Profile', 4),
+          Row(
+            children: [
+              const Icon(Icons.lightbulb_rounded, size: 18, color: Color(0xFFD97706)),
+              const SizedBox(width: 8),
+              Text(
+                'Panduan Praktis Drop-off Mandiri',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF92400E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildTipItem('Periksa saku pakaian Anda untuk memastikan tidak ada barang berharga atau uang.'),
+          _buildTipItem('Sebutkan jika ada noda membandel atau pakaian yang memerlukan penanganan khusus ke kasir.'),
+          _buildTipItem('Simpan kode drop-off ini untuk verifikasi saat mengambil pakaian bersih Anda.'),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    final isActive = _selectedNavIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedNavIndex = index),
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 60,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 26,
-              color: isActive
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.5),
-              shadows: isActive
-                  ? [
-                      Shadow(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        blurRadius: 8,
-                      ),
-                    ]
-                  : null,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isActive
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.5),
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
+  Widget _buildTipItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ', style: TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.bold)),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: const Color(0xFF78350F),
+                height: 1.35,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  //  7. BOTTOM ACTION BUTTONS
+  // ═══════════════════════════════════════════════
+  Widget _buildBottomActions() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(top: BorderSide(color: _border)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _goToHome,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: _border),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text(
+                'Kembali ke Beranda',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: _textDark,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Menghubungkan ke layanan bantuan Washora...',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12),
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.support_agent_rounded, size: 18, color: Colors.white),
+              label: Text(
+                'Bantuan Kasir',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryBlue,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
-
-// ── Step status enum ──
-enum _StepStatus { completed, active, pending }

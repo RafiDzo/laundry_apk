@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
+import 'home_screen.dart';
 
 class OrderTrackingPage extends StatefulWidget {
   final String orderId;
@@ -102,7 +103,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                     child: Column(
                       children: [
                         _staggered(index: 0, child: _buildStatusCard()),
@@ -114,11 +115,20 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                     ),
                   ),
                 ),
+                _buildBottomActions(),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  void _goToHome() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeScreen()),
+      (route) => false,
     );
   }
 
@@ -137,7 +147,13 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
         child: Row(
           children: [
             IconButton(
-              onPressed: () => Navigator.of(context).maybePop(),
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  _goToHome();
+                }
+              },
               icon: const Icon(Icons.arrow_back_rounded, color: _textDark),
             ),
             Expanded(
@@ -748,6 +764,69 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                     ],
                   ],
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActions() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: const BoxDecoration(
+        color: _white,
+        border: Border(top: BorderSide(color: _border)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _goToHome,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: _border),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text(
+                'Kembali ke Beranda',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: _textDark,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Menghubungkan ke layanan bantuan kurir Washora...',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12),
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.headset_mic_rounded, size: 18, color: Colors.white),
+              label: Text(
+                'Bantuan Kurir',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _blue,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
             ),
           ),

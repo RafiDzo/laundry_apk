@@ -687,7 +687,9 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
                   ),
                 ),
                 Text(
-                  'Pakaian dikemas higienis & wangi siap pakai',
+                  _selectedDeliveryType == 0
+                      ? 'Pakaian dikemas higienis & diantar kurir ke rumah'
+                      : 'Pakaian dikemas higienis & siap diambil di kasir outlet',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     color: const Color(0xFF16A34A),
@@ -774,11 +776,11 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Ongkos Kirim Kurir',
+                _selectedDeliveryType == 0 ? 'Ongkos Kirim Kurir' : 'Biaya Drop-off Outlet',
                 style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF64748B)),
               ),
               Text(
-                'GRATIS (Promo)',
+                _selectedDeliveryType == 0 ? 'GRATIS (Promo)' : 'Rp 0 (Bebas Biaya)',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
