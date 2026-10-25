@@ -30,7 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _defaultPayment = 'QRIS & E-Wallet (GoPay / OVO)';
   final int _tokenBalance = 957;
 
-  final List<Map<String, String>> _addresses = [
+  List<Map<String, String>> _addresses = [
     {
       'label': 'Rumah',
       'address': 'Jl. Merdeka No. 12, RT 02 / RW 05, Menteng',
@@ -67,6 +67,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadProfileAndPrefs() async {
     final prefs = await SharedPreferences.getInstance();
+    final savedAddressesJson = prefs.getString('pref_saved_addresses');
+    if (savedAddressesJson != null) {
+      try {
+        final decoded = (jsonDecode(savedAddressesJson) as List)
+            .map((e) => Map<String, String>.from(e as Map))
+            .toList();
+        if (decoded.isNotEmpty) {
+          _addresses = decoded;
+        }
+      } catch (_) {}
+    }
+
     setState(() {
       _customAvatarUrl = prefs.getString('pref_avatar_url');
       _selectedFragrance = prefs.getString('pref_fragrance') ?? 'Lavender Serenity';
@@ -99,6 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await prefs.setString('pref_notes', _specialNotes);
     await prefs.setString('pref_phone', _userPhone);
     await prefs.setString('pref_address', _primaryAddress);
+    await prefs.setString('pref_saved_addresses', jsonEncode(_addresses));
   }
 
   Future<void> _updateAvatar(String? newAvatarUrl) async {
@@ -1311,157 +1324,679 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     const SizedBox(height: 18),
-                    // Address Cards
-                    ..._addresses.map((item) {
-                      final isDefault = _primaryAddress.contains(item['label']!);
-                      IconData addressIcon = Icons.home_rounded;
-                      if (item['label']!.toLowerCase().contains('kantor')) {
-                        addressIcon = Icons.business_rounded;
-                      } else if (item['label']!.toLowerCase().contains('kos')) {
-                        addressIcon = Icons.apartment_rounded;
-                      }
+                    // Address Cards List (Scrollable)
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(ctx).size.height * 0.42,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: _addresses.map((item) {
+                            final isDefault = _primaryAddress.contains(item['label']!);
+                            IconData addressIcon = Icons.home_rounded;
+                            final labelLower = item['label']!.toLowerCase();
+                            if (labelLower.contains('kantor')) {
+                              addressIcon = Icons.business_rounded;
+                            } else if (labelLower.contains('kos')) {
+                              addressIcon = Icons.apartment_rounded;
+                            } else if (labelLower.contains('apartemen')) {
+                              addressIcon = Icons.location_city_rounded;
+                            }
 
-                      return InkWell(
-                        onTap: () {
-                          setState(() {
-                            _primaryAddress = '${item['label']!} • ${item['address']!}';
-                          });
-                          _savePreferences();
-                          Navigator.pop(ctx);
-                          _showToast('Alamat utama diubah ke ${item['label']}');
-                        },
-                        borderRadius: BorderRadius.circular(16),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isDefault ? const Color(0xFFF0F7FF) : Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isDefault ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
-                              width: isDefault ? 2 : 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: isDefault
-                                    ? const Color(0xFF0077E6).withValues(alpha: 0.08)
-                                    : const Color(0xFF0F172A).withValues(alpha: 0.03),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: isDefault ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(
-                                  addressIcon,
-                                  size: 18,
-                                  color: isDefault ? const Color(0xFF0077E6) : const Color(0xFF64748B),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          item['label']!,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 14,
-                                            color: const Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        if (isDefault) ...[
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFDBEAFE),
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              'Utama',
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                color: const Color(0xFF1D4ED8),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _primaryAddress = '${item['label']!} • ${item['address']!}';
+                                    for (var a in _addresses) {
+                                      a['isDefault'] = a['label'] == item['label'] ? 'true' : 'false';
+                                    }
+                                  });
+                                  _savePreferences();
+                                  Navigator.pop(ctx);
+                                  _showToast('Alamat utama diubah ke ${item['label']}');
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: isDefault ? const Color(0xFFF0F7FF) : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isDefault ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+                                      width: isDefault ? 2 : 1,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      item['address']!,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: const Color(0xFF475569),
-                                        height: 1.35,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: isDefault
+                                            ? const Color(0xFF0077E6).withValues(alpha: 0.08)
+                                            : const Color(0xFF0F172A).withValues(alpha: 0.03),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 3),
                                       ),
-                                    ),
-                                    if (item['note'] != null && item['note']!.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.info_outline_rounded,
-                                            size: 13,
-                                            color: Color(0xFF94A3B8),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              item['note']!,
+                                    ],
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: isDefault ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Icon(
+                                          addressIcon,
+                                          size: 18,
+                                          color: isDefault ? const Color(0xFF0077E6) : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  item['label']!,
+                                                  style: GoogleFonts.plusJakartaSans(
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 14,
+                                                    color: const Color(0xFF0F172A),
+                                                  ),
+                                                ),
+                                                if (isDefault) ...[
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFDBEAFE),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: Text(
+                                                      'Utama',
+                                                      style: GoogleFonts.plusJakartaSans(
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: const Color(0xFF1D4ED8),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              item['address']!,
                                               style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 11,
-                                                color: const Color(0xFF64748B),
-                                                fontStyle: FontStyle.italic,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: const Color(0xFF475569),
+                                                height: 1.35,
                                               ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            if (item['note'] != null && item['note']!.isNotEmpty) ...[
+                                              const SizedBox(height: 6),
+                                              Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.info_outline_rounded,
+                                                    size: 13,
+                                                    color: Color(0xFF94A3B8),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Expanded(
+                                                    child: Text(
+                                                      item['note']!,
+                                                      style: GoogleFonts.plusJakartaSans(
+                                                        fontSize: 11,
+                                                        color: const Color(0xFF64748B),
+                                                        fontStyle: FontStyle.italic,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (_addresses.length > 1 && !isDefault) ...[
+                                            InkWell(
+                                              onTap: () {
+                                                Navigator.pop(ctx);
+                                                _confirmDeleteAddress(item);
+                                              },
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: const Padding(
+                                                padding: EdgeInsets.all(4),
+                                                child: Icon(
+                                                  Icons.delete_outline_rounded,
+                                                  size: 19,
+                                                  color: Color(0xFF94A3B8),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                          ],
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: Icon(
+                                              isDefault
+                                                  ? Icons.check_circle_rounded
+                                                  : Icons.radio_button_unchecked_rounded,
+                                              color: isDefault ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
+                                              size: 22,
                                             ),
                                           ),
                                         ],
                                       ),
                                     ],
-                                  ],
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Icon(
-                                  isDefault
-                                      ? Icons.check_circle_rounded
-                                      : Icons.radio_button_unchecked_rounded,
-                                  color: isDefault ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
-                                  size: 22,
-                                ),
-                              ),
-                            ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // Tombol Tambah Alamat Baru
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _showAddAddressSheet();
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFF0077E6).withValues(alpha: 0.35),
                           ),
                         ),
-                      );
-                    }),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.add_circle_outline_rounded, size: 20, color: Color(0xFF0077E6)),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Tambah Alamat Baru',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0077E6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showAddAddressSheet() {
+    final labelController = TextEditingController(text: 'Rumah');
+    final addressController = TextEditingController();
+    final noteController = TextEditingController();
+    String selectedCategory = 'Rumah';
+    bool makeDefault = _addresses.isEmpty;
+
+    final categories = [
+      {'name': 'Rumah', 'icon': Icons.home_rounded},
+      {'name': 'Kantor', 'icon': Icons.business_rounded},
+      {'name': 'Kos', 'icon': Icons.apartment_rounded},
+      {'name': 'Apartemen', 'icon': Icons.location_city_rounded},
+      {'name': 'Lainnya', 'icon': Icons.place_rounded},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x260F172A),
+                    blurRadius: 30,
+                    offset: Offset(0, -6),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Grab Handle
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFCBD5E1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      // Header Row
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.add_location_alt_rounded,
+                              color: Color(0xFF0077E6),
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Tambah Alamat Baru',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 17,
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Lengkapi detail lokasi penjemputan cucian',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    color: const Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _showAddressPickerSheet();
+                            },
+                            icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Kategori Cepat
+                      Text(
+                        'Kategori Alamat',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: categories.map((cat) {
+                            final isSel = selectedCategory == cat['name'];
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      cat['icon'] as IconData,
+                                      size: 15,
+                                      color: isSel ? Colors.white : const Color(0xFF475569),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      cat['name'] as String,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: isSel ? Colors.white : const Color(0xFF475569),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                selected: isSel,
+                                selectedColor: const Color(0xFF0077E6),
+                                backgroundColor: const Color(0xFFF1F5F9),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(
+                                    color: isSel ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+                                  ),
+                                ),
+                                showCheckmark: false,
+                                onSelected: (val) {
+                                  if (val) {
+                                    setSheetState(() {
+                                      selectedCategory = cat['name'] as String;
+                                      if (labelController.text.isEmpty ||
+                                          categories.any((c) => c['name'] == labelController.text)) {
+                                        labelController.text = cat['name'] as String;
+                                      }
+                                    });
+                                  }
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Input Label Alamat
+                      Text(
+                        'Nama / Label Alamat',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: labelController,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF0F172A)),
+                        decoration: InputDecoration(
+                          hintText: 'Contoh: Rumah, Kos Sukolilo, Kantor Cyber',
+                          hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Input Alamat Lengkap
+                      Text(
+                        'Alamat Lengkap',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: addressController,
+                        maxLines: 2,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF0F172A)),
+                        decoration: InputDecoration(
+                          hintText: 'Nama jalan, nomor rumah/blok, RT/RW, kelurahan, kota',
+                          hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Input Catatan Kurir
+                      Text(
+                        'Patokan / Catatan Kurir (Opsional)',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: noteController,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF0F172A)),
+                        decoration: InputDecoration(
+                          hintText: 'Contoh: Pagar hitam, titip satpam, samping minimarket',
+                          hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Switch Jadikan Alamat Utama
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.star_rounded, size: 20, color: Color(0xFFF59E0B)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Jadikan sebagai alamat utama',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF1E293B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Switch.adaptive(
+                              value: makeDefault,
+                              activeTrackColor: const Color(0xFF0077E6),
+                              activeThumbColor: Colors.white,
+                              onChanged: (val) {
+                                setSheetState(() => makeDefault = val);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Tombol Simpan
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final label = labelController.text.trim();
+                            final address = addressController.text.trim();
+                            final note = noteController.text.trim();
+
+                            if (label.isEmpty) {
+                              _showToast('Nama / label alamat tidak boleh kosong');
+                              return;
+                            }
+                            if (address.isEmpty) {
+                              _showToast('Alamat lengkap tidak boleh kosong');
+                              return;
+                            }
+
+                            final newAddr = {
+                              'label': label,
+                              'address': address,
+                              'note': note,
+                              'isDefault': makeDefault ? 'true' : 'false',
+                            };
+
+                            setState(() {
+                              if (makeDefault) {
+                                for (var item in _addresses) {
+                                  item['isDefault'] = 'false';
+                                }
+                                _primaryAddress = '$label • $address';
+                              }
+                              _addresses.add(newAddr);
+                            });
+
+                            _savePreferences();
+                            Navigator.pop(ctx);
+                            _showToast('Alamat "$label" berhasil ditambahkan!');
+                            _showAddressPickerSheet();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0077E6),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            'Simpan Alamat',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteAddress(Map<String, String> addressItem) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Hapus Alamat',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            color: const Color(0xFF0F172A),
+          ),
+        ),
+        content: Text(
+          'Apakah Anda yakin ingin menghapus alamat "${addressItem['label']}"?',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: const Color(0xFF64748B),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _showAddressPickerSheet();
+            },
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
+            child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                _addresses.remove(addressItem);
+                if (_primaryAddress.contains(addressItem['label']!) && _addresses.isNotEmpty) {
+                  _primaryAddress = '${_addresses.first['label']!} • ${_addresses.first['address']!}';
+                  _addresses.first['isDefault'] = 'true';
+                }
+              });
+              _savePreferences();
+              _showToast('Alamat berhasil dihapus');
+              _showAddressPickerSheet();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text('Hapus', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+          ),
+        ],
       ),
     );
   }
