@@ -35,7 +35,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (name.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -114,7 +117,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           backgroundColor: const Color(0xFF16A34A),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );
@@ -161,34 +166,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFEDF2F7),
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F172A), Color(0xFF0369A1), Color(0xFF0EA5E9)],
-            stops: [0.0, 0.4, 1.0],
-          ),
-        ),
+        decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
         child: Stack(
           children: [
             // Background decorative shapes
             Positioned(
-              top: -100,
-              right: -100,
+              top: -80,
+              right: -60,
               child: Container(
-                width: 300,
-                height: 300,
+                width: 260,
+                height: 260,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.1),
-                      Colors.white.withValues(alpha: 0.0),
-                    ],
-                  ),
+                  color: const Color(0xFF0077E6).withValues(alpha: 0.07),
                 ),
               ),
             ),
@@ -196,16 +190,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
               bottom: -50,
               left: -80,
               child: Container(
-                width: 250,
-                height: 250,
+                width: 220,
+                height: 220,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.05),
-                      Colors.white.withValues(alpha: 0.0),
-                    ],
-                  ),
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.05),
                 ),
               ),
             ),
@@ -267,16 +256,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
           height: 96,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            color: Colors.white.withValues(alpha: 0.10),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.20),
-              width: 1,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0077E6), Color(0xFF0284C7)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0EA5E9).withValues(alpha: 0.6),
+                color: const Color(0xFF0077E6).withValues(alpha: 0.40),
                 blurRadius: 20,
-                spreadRadius: 0,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: const Color(0xFF0284C7).withValues(alpha: 0.18),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
@@ -296,13 +290,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           style: GoogleFonts.quicksand(
             fontSize: 30,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
-            shadows: [
-              Shadow(
-                color: Colors.white.withValues(alpha: 0.3),
-                blurRadius: 15,
-              ),
-            ],
+            color: const Color(0xFF0F172A),
           ),
         ),
 
@@ -314,7 +302,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withValues(alpha: 0.8),
+            color: const Color(0xFF64748B),
           ),
         ),
       ],
@@ -387,15 +375,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white.withValues(alpha: 0.10),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.20),
-          width: 1,
-        ),
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
+            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
+            spreadRadius: -1,
+          ),
+          BoxShadow(
+            color: const Color(0xFF0077E6).withValues(alpha: 0.04),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -403,20 +394,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
-        style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
+        style: GoogleFonts.inter(color: const Color(0xFF0F172A), fontSize: 15),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: GoogleFonts.inter(
-            color: Colors.white.withValues(alpha: 0.6),
+            color: const Color(0xFF94A3B8),
             fontSize: 15,
           ),
           prefixIcon: Padding(
             padding: const EdgeInsets.only(left: 16, right: 12),
-            child: Icon(
-              icon,
-              color: Colors.white.withValues(alpha: 0.7),
-              size: 22,
-            ),
+            child: Icon(icon, color: const Color(0xFF0077E6), size: 22),
           ),
           prefixIconConstraints: const BoxConstraints(
             minWidth: 50,
@@ -441,15 +428,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white.withValues(alpha: 0.10),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.20),
-          width: 1,
-        ),
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
+            color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
+            spreadRadius: -1,
+          ),
+          BoxShadow(
+            color: const Color(0xFF0077E6).withValues(alpha: 0.04),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -457,18 +447,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
       child: TextField(
         controller: controller,
         obscureText: obscure,
-        style: GoogleFonts.inter(color: Colors.white, fontSize: 15),
+        style: GoogleFonts.inter(color: const Color(0xFF0F172A), fontSize: 15),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: GoogleFonts.inter(
-            color: Colors.white.withValues(alpha: 0.6),
+            color: const Color(0xFF94A3B8),
             fontSize: 15,
           ),
           prefixIcon: Padding(
             padding: const EdgeInsets.only(left: 16, right: 12),
             child: Icon(
               Icons.lock_outline,
-              color: Colors.white.withValues(alpha: 0.7),
+              color: const Color(0xFF0077E6),
               size: 22,
             ),
           ),
@@ -484,7 +474,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 obscure
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
-                color: Colors.white.withValues(alpha: 0.6),
+                color: const Color(0xFF94A3B8),
                 size: 22,
               ),
             ),
@@ -549,13 +539,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       )
                     : Text(
-                  'Sign Up',
-                  style: GoogleFonts.quicksand(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                        'Sign Up',
+                        style: GoogleFonts.quicksand(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -573,7 +563,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withValues(alpha: 0.8),
+            color: const Color(0xFF64748B),
           ),
         ),
         GestureDetector(
@@ -585,7 +575,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: const Color(0xFF0077E6),
             ),
           ),
         ),
@@ -599,7 +589,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         width: 128,
         height: 4,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: const Color(0xFFE2E8F0),
           borderRadius: BorderRadius.circular(2),
         ),
       ),

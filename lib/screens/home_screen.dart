@@ -8,6 +8,7 @@ import '../services/seed_data.dart';
 import 'shop_detail_screen.dart';
 import 'order_tracking_page.dart';
 import 'profile_screen.dart';
+import 'order_flow_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,7 +26,12 @@ class _HomeScreenState extends State<HomeScreen>
   Timer? _promoTimer;
   late final AnimationController _entranceController;
 
-  final List<String> _filters = ['Semua', 'Kilat Express', 'Satuan', 'Setrika Only'];
+  final List<String> _filters = [
+    'Semua',
+    'Kilat Express',
+    'Satuan',
+    'Setrika Only',
+  ];
   final List<IconData> _filterIcons = [
     Icons.apps_rounded,
     Icons.bolt_rounded,
@@ -165,15 +171,13 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildStaggeredChild({required int index, required Widget child}) {
     final begin = (index * 0.08).clamp(0.0, 0.6);
     final end = (begin + 0.35).clamp(0.0, 1.0);
-    final slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.12),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: Interval(begin, end, curve: Curves.easeOutCubic),
-      ),
-    );
+    final slideAnim =
+        Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _entranceController,
+            curve: Interval(begin, end, curve: Curves.easeOutCubic),
+          ),
+        );
     final fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _entranceController,
@@ -187,7 +191,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   String _getUserGreeting() {
-    final metaName = _authService.currentUser?.userMetadata?['name']?.toString();
+    final metaName = _authService.currentUser?.userMetadata?['name']
+        ?.toString();
     if (metaName != null && metaName.trim().isNotEmpty) {
       return metaName.trim().split(' ').first;
     }
@@ -202,7 +207,9 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEDF2F7), // Neutral background for widescreen canvas
+      backgroundColor: const Color(
+        0xFFEDF2F7,
+      ), // Neutral background for widescreen canvas
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 500),
@@ -263,21 +270,45 @@ class _HomeScreenState extends State<HomeScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildStaggeredChild(index: 0, child: _buildGreetingHeader()),
+                              _buildStaggeredChild(
+                                index: 0,
+                                child: _buildGreetingHeader(),
+                              ),
                               const SizedBox(height: 14),
-                              _buildStaggeredChild(index: 1, child: _buildLocationBar()),
+                              _buildStaggeredChild(
+                                index: 1,
+                                child: _buildLocationBar(),
+                              ),
                               const SizedBox(height: 16),
-                              _buildStaggeredChild(index: 2, child: _buildSearchBar()),
+                              _buildStaggeredChild(
+                                index: 2,
+                                child: _buildSearchBar(),
+                              ),
                               const SizedBox(height: 18),
-                              _buildStaggeredChild(index: 3, child: _buildFilterChips()),
+                              _buildStaggeredChild(
+                                index: 3,
+                                child: _buildFilterChips(),
+                              ),
                               const SizedBox(height: 20),
-                              _buildStaggeredChild(index: 4, child: _buildPromoCarousel()),
+                              _buildStaggeredChild(
+                                index: 4,
+                                child: _buildPromoCarousel(),
+                              ),
                               const SizedBox(height: 18),
-                              _buildStaggeredChild(index: 5, child: _buildSpecialOfferBanner()),
+                              _buildStaggeredChild(
+                                index: 5,
+                                child: _buildSpecialOfferBanner(),
+                              ),
                               const SizedBox(height: 22),
-                              _buildStaggeredChild(index: 6, child: _buildNearbyHeader()),
+                              _buildStaggeredChild(
+                                index: 6,
+                                child: _buildNearbyHeader(),
+                              ),
                               const SizedBox(height: 12),
-                              _buildStaggeredChild(index: 7, child: _buildLaundryList()),
+                              _buildStaggeredChild(
+                                index: 7,
+                                child: _buildLaundryList(),
+                              ),
                             ],
                           ),
                         ),
@@ -358,7 +389,11 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
                       const SizedBox(width: 6),
-                      const Icon(Icons.verified_rounded, size: 16, color: Color(0xFF0077E6)),
+                      const Icon(
+                        Icons.verified_rounded,
+                        size: 16,
+                        color: Color(0xFF0077E6),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -385,7 +420,9 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   backgroundColor: const Color(0xFF0077E6),
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               );
             },
@@ -555,11 +592,18 @@ class _HomeScreenState extends State<HomeScreen>
         child: Row(
           children: [
             const SizedBox(width: 14),
-            const Icon(Icons.search_rounded, color: Color(0xFF94A3B8), size: 20),
+            const Icon(
+              Icons.search_rounded,
+              color: Color(0xFF94A3B8),
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: TextField(
-                style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF0F172A)),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  color: const Color(0xFF0F172A),
+                ),
                 decoration: InputDecoration(
                   hintText: 'Cari outlet laundry, kiloan, atau sepatu...',
                   hintStyle: GoogleFonts.plusJakartaSans(
@@ -615,23 +659,31 @@ class _HomeScreenState extends State<HomeScreen>
                 color: isSelected ? const Color(0xFF0077E6) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+                  color: isSelected
+                      ? const Color(0xFF0077E6)
+                      : const Color(0xFFE2E8F0),
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: const Color(0xFF0077E6).withValues(alpha: 0.35),
+                          color: const Color(
+                            0xFF0077E6,
+                          ).withValues(alpha: 0.35),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
                         BoxShadow(
-                          color: const Color(0xFF0284C7).withValues(alpha: 0.20),
+                          color: const Color(
+                            0xFF0284C7,
+                          ).withValues(alpha: 0.20),
                           blurRadius: 6,
                         ),
                       ]
                     : [
                         BoxShadow(
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                          color: const Color(
+                            0xFF0F172A,
+                          ).withValues(alpha: 0.04),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
@@ -648,9 +700,13 @@ class _HomeScreenState extends State<HomeScreen>
                   Text(
                     _filters[index],
                     style: GoogleFonts.plusJakartaSans(
-                      color: isSelected ? Colors.white : const Color(0xFF334155),
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF334155),
                       fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w600,
                     ),
                   ),
                 ],
@@ -722,7 +778,10 @@ class _HomeScreenState extends State<HomeScreen>
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.22),
                               borderRadius: BorderRadius.circular(8),
@@ -762,7 +821,10 @@ class _HomeScreenState extends State<HomeScreen>
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(10),
@@ -804,7 +866,9 @@ class _HomeScreenState extends State<HomeScreen>
               width: isActive ? 18 : 6,
               height: 6,
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
+                color: isActive
+                    ? const Color(0xFF0077E6)
+                    : const Color(0xFFCBD5E1),
                 borderRadius: BorderRadius.circular(3),
               ),
             );
@@ -967,7 +1031,10 @@ class _HomeScreenState extends State<HomeScreen>
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(28.0),
-          child: CircularProgressIndicator(color: Color(0xFF0077E6), strokeWidth: 2),
+          child: CircularProgressIndicator(
+            color: Color(0xFF0077E6),
+            strokeWidth: 2,
+          ),
         ),
       );
     }
@@ -981,7 +1048,8 @@ class _HomeScreenState extends State<HomeScreen>
       itemCount: shopsToShow.length,
       itemBuilder: (context, index) {
         final shop = shopsToShow[index];
-        final isFast = shop.queueText.toUpperCase().contains('CEPAT') ||
+        final isFast =
+            shop.queueText.toUpperCase().contains('CEPAT') ||
             shop.queueText.toUpperCase().contains('LANCAR');
 
         return Container(
@@ -1037,7 +1105,9 @@ class _HomeScreenState extends State<HomeScreen>
                           borderRadius: BorderRadius.circular(14),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0F172A).withValues(alpha: 0.10),
+                              color: const Color(
+                                0xFF0F172A,
+                              ).withValues(alpha: 0.10),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
@@ -1050,16 +1120,17 @@ class _HomeScreenState extends State<HomeScreen>
                             width: 74,
                             height: 74,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              width: 74,
-                              height: 74,
-                              color: const Color(0xFFEFF6FF),
-                              child: const Icon(
-                                Icons.local_laundry_service_rounded,
-                                color: Color(0xFF0077E6),
-                                size: 28,
-                              ),
-                            ),
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                                  width: 74,
+                                  height: 74,
+                                  color: const Color(0xFFEFF6FF),
+                                  child: const Icon(
+                                    Icons.local_laundry_service_rounded,
+                                    color: Color(0xFF0077E6),
+                                    size: 28,
+                                  ),
+                                ),
                           ),
                         ),
                       ),
@@ -1085,14 +1156,21 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFFEF3C7),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.star_rounded, size: 14, color: Color(0xFFD97706)),
+                                      const Icon(
+                                        Icons.star_rounded,
+                                        size: 14,
+                                        color: Color(0xFFD97706),
+                                      ),
                                       const SizedBox(width: 3),
                                       Text(
                                         shop.rating.toStringAsFixed(1),
@@ -1110,7 +1188,11 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                const Icon(Icons.near_me_rounded, size: 13, color: Color(0xFF0077E6)),
+                                const Icon(
+                                  Icons.near_me_rounded,
+                                  size: 13,
+                                  color: Color(0xFF0077E6),
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   shop.distance,
@@ -1121,7 +1203,10 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                Text('•', style: TextStyle(color: Colors.grey.shade400)),
+                                Text(
+                                  '•',
+                                  style: TextStyle(color: Colors.grey.shade400),
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -1139,15 +1224,22 @@ class _HomeScreenState extends State<HomeScreen>
                             const SizedBox(height: 6),
                             // Queue Badge
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
-                                color: isFast ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                                color: isFast
+                                    ? const Color(0xFFDCFCE7)
+                                    : const Color(0xFFFEF3C7),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 shop.queueText,
                                 style: GoogleFonts.plusJakartaSans(
-                                  color: isFast ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                                  color: isFast
+                                      ? const Color(0xFF16A34A)
+                                      : const Color(0xFFD97706),
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -1188,13 +1280,18 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 7,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF0077E6),
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0077E6).withValues(alpha: 0.38),
+                              color: const Color(
+                                0xFF0077E6,
+                              ).withValues(alpha: 0.38),
                               blurRadius: 10,
                               offset: const Offset(0, 3),
                             ),
@@ -1280,8 +1377,17 @@ class _HomeScreenState extends State<HomeScreen>
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const OrderTrackingPage(orderId: 'TRK-98421'),
+              builder: (context) =>
+                  const OrderTrackingPage(orderId: 'TRK-98421'),
             ),
+          ).then((_) {
+            if (mounted) setState(() => _selectedNavIndex = 0);
+          });
+        } else if (index == 1) {
+          // Navigate to Order Flow (two-step)
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const OrderFlowScreen()),
           ).then((_) {
             if (mounted) setState(() => _selectedNavIndex = 0);
           });
@@ -1305,14 +1411,18 @@ class _HomeScreenState extends State<HomeScreen>
               child: Icon(
                 icon,
                 size: 22,
-                color: isActive ? const Color(0xFF0077E6) : const Color(0xFF94A3B8),
+                color: isActive
+                    ? const Color(0xFF0077E6)
+                    : const Color(0xFF94A3B8),
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: GoogleFonts.plusJakartaSans(
-                color: isActive ? const Color(0xFF0077E6) : const Color(0xFF94A3B8),
+                color: isActive
+                    ? const Color(0xFF0077E6)
+                    : const Color(0xFF94A3B8),
                 fontSize: 11,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
               ),
