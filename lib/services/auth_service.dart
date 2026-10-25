@@ -166,6 +166,27 @@ class AuthService {
     }
   }
 
+  /// Ubah kata sandi dengan verifikasi kata sandi lama terlebih dahulu
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final email = _auth.auth.currentUser?.email;
+    if (email != null && email.isNotEmpty) {
+      try {
+        await _auth.auth.signInWithPassword(
+          email: email,
+          password: oldPassword,
+        );
+      } on AuthException {
+        throw 'Kata sandi lama yang Anda masukkan tidak sesuai.';
+      } catch (e) {
+        throw 'Gagal memverifikasi kata sandi lama: $e';
+      }
+    }
+    await updatePassword(newPassword);
+  }
+
   // ================= SIGN OUT =================
 
   Future<void> signOut() async {
