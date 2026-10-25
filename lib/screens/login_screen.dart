@@ -59,10 +59,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
-    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Email dan password harus diisi!', style: GoogleFonts.inter()),
+          content: Text(
+            'Email dan password harus diisi!',
+            style: GoogleFonts.inter(),
+          ),
           backgroundColor: const Color(0xFFDC2626),
         ),
       );
@@ -81,7 +85,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final prefs = await SharedPreferences.getInstance();
       if (_rememberMe) {
         await prefs.setString('saved_email', _emailController.text.trim());
-        await prefs.setString('saved_password', _passwordController.text.trim());
+        await prefs.setString(
+          'saved_password',
+          _passwordController.text.trim(),
+        );
       } else {
         await prefs.remove('saved_email');
         await prefs.remove('saved_password');
@@ -132,7 +139,10 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [primaryColor.withValues(alpha: 0.05), Colors.transparent],
+                  colors: [
+                    primaryColor.withValues(alpha: 0.05),
+                    Colors.transparent,
+                  ],
                   stops: const [0.0, 0.7],
                 ),
               ),
@@ -148,13 +158,16 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [primaryColor.withValues(alpha: 0.03), Colors.transparent],
+                  colors: [
+                    primaryColor.withValues(alpha: 0.03),
+                    Colors.transparent,
+                  ],
                   stops: const [0.0, 0.7],
                 ),
               ),
             ),
           ),
-          
+
           SafeArea(
             child: CustomScrollView(
               physics: const ClampingScrollPhysics(),
@@ -177,10 +190,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(24),
-                                border: Border.all(color: primaryColor.withValues(alpha: 0.1)),
+                                border: Border.all(
+                                  color: primaryColor.withValues(alpha: 0.1),
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: primaryColor.withValues(alpha: 0.2), // shadow-glow
+                                    color: primaryColor.withValues(
+                                      alpha: 0.2,
+                                    ), // shadow-glow
                                     blurRadius: 20,
                                   ),
                                 ],
@@ -188,7 +205,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: Center(
                                 child: CustomPaint(
                                   size: const Size(56, 56), // w-14 h-14
-                                  painter: _LaundryLogoPainter(color: primaryColor),
+                                  painter: _LaundryLogoPainter(
+                                    color: primaryColor,
+                                  ),
                                 ),
                               ),
                             ),
@@ -212,9 +231,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        
+
                         const SizedBox(height: 40), // mb-10 equivalent
-                        
                         // Input fields
                         _buildInputField(
                           controller: _emailController,
@@ -222,13 +240,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           hintText: 'Email address',
                           keyboardType: TextInputType.emailAddress,
                         ),
-                        
+
                         const SizedBox(height: 20),
-                        
+
                         _buildPasswordField(),
-                        
+
                         const SizedBox(height: 12),
-                        
+
                         // Forgot Password & Remember Me
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -240,10 +258,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                   height: 20,
                                   child: Checkbox(
                                     value: _rememberMe,
-                                    onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                                    onChanged: (v) => setState(
+                                      () => _rememberMe = v ?? false,
+                                    ),
                                     activeColor: primaryColor,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                                    side: BorderSide(color: darkNavy.withValues(alpha: 0.3)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    side: BorderSide(
+                                      color: darkNavy.withValues(alpha: 0.3),
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -269,26 +293,39 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        
+
                         const SizedBox(height: 24),
-                        
+
                         // Login Button
                         _buildLoginButton(),
 
                         const SizedBox(height: 16),
-                        
+
                         // Divider
                         Row(
                           children: [
-                            Expanded(child: Divider(color: darkNavy.withValues(alpha: 0.1))),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                'or',
-                                style: GoogleFonts.inter(color: darkNavy.withValues(alpha: 0.4), fontSize: 14),
+                            Expanded(
+                              child: Divider(
+                                color: darkNavy.withValues(alpha: 0.1),
                               ),
                             ),
-                            Expanded(child: Divider(color: darkNavy.withValues(alpha: 0.1))),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                'or',
+                                style: GoogleFonts.inter(
+                                  color: darkNavy.withValues(alpha: 0.4),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(
+                                color: darkNavy.withValues(alpha: 0.1),
+                              ),
+                            ),
                           ],
                         ),
 
@@ -317,7 +354,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onTap: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => SignUpScreen(role: widget.role)),
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          SignUpScreen(role: widget.role),
+                                    ),
                                   );
                                 },
                                 child: Text(
@@ -332,7 +372,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-                        
+
                         // Bottom Line
                         Container(
                           width: 128,
@@ -390,7 +430,10 @@ class _LoginScreenState extends State<LoginScreen> {
             size: 22,
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16), // py-4
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 20,
+            horizontal: 16,
+          ), // py-4
         ),
       ),
     );
@@ -430,13 +473,18 @@ class _LoginScreenState extends State<LoginScreen> {
               setState(() => _obscurePassword = !_obscurePassword);
             },
             child: Icon(
-              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              _obscurePassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
               color: darkNavy.withValues(alpha: 0.3),
               size: 20,
             ),
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 20,
+            horizontal: 16,
+          ),
         ),
       ),
     );
@@ -453,9 +501,7 @@ class _LoginScreenState extends State<LoginScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          border: Border.all(
-            color: primaryColor.withValues(alpha: 0.1),
-          ),
+          border: Border.all(color: primaryColor.withValues(alpha: 0.1)),
           boxShadow: [
             BoxShadow(
               color: primaryColor.withValues(alpha: 0.3), // shadow-button-glow
@@ -480,7 +526,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ? const SizedBox(
                         height: 24,
                         width: 24,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
                       )
                     : Text(
                         'Login',
@@ -505,10 +554,7 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: Colors.white,
-          border: Border.all(
-            color: darkNavy.withValues(alpha: 0.1),
-            width: 1,
-          ),
+          border: Border.all(color: darkNavy.withValues(alpha: 0.1), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
@@ -525,18 +571,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 : () async {
                     setState(() => _isLoading = true);
                     try {
-                      await _authService.signInWithGoogle(defaultRole: widget.role);
+                      await _authService.signInWithGoogle(
+                        defaultRole: widget.role,
+                      );
                       if (!mounted) return;
                       if (widget.role == 'owner') {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (context) => const OwnerDashboardScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const OwnerDashboardScreen(),
+                          ),
                           (route) => false,
                         );
                       } else {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (context) => const LocationScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const LocationScreen(),
+                          ),
                           (route) => false,
                         );
                       }
@@ -544,7 +596,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(e.toString(), style: GoogleFonts.inter()),
+                            content: Text(
+                              e.toString(),
+                              style: GoogleFonts.inter(),
+                            ),
                             backgroundColor: const Color(0xFFDC2626),
                           ),
                         );
@@ -619,15 +674,21 @@ class _LaundryLogoPainter extends CustomPainter {
     shirtPath.lineTo(63 * scale, 38 * scale);
     shirtPath.lineTo(65 * scale, 55 * scale);
     shirtPath.cubicTo(
-      65 * scale, 55 * scale,
-      68 * scale, 62 * scale,
-      60 * scale, 62 * scale,
+      65 * scale,
+      55 * scale,
+      68 * scale,
+      62 * scale,
+      60 * scale,
+      62 * scale,
     );
     shirtPath.lineTo(40 * scale, 62 * scale);
     shirtPath.cubicTo(
-      32 * scale, 62 * scale,
-      35 * scale, 55 * scale,
-      35 * scale, 55 * scale,
+      32 * scale,
+      62 * scale,
+      35 * scale,
+      55 * scale,
+      35 * scale,
+      55 * scale,
     );
     shirtPath.lineTo(37 * scale, 38 * scale);
     shirtPath.lineTo(30 * scale, 42 * scale);
@@ -651,25 +712,37 @@ class _LaundryLogoPainter extends CustomPainter {
     final smilePath = Path();
     smilePath.moveTo(22 * scale, 65 * scale);
     smilePath.cubicTo(
-      22 * scale, 65 * scale,
-      30 * scale, 78 * scale,
-      50 * scale, 78 * scale,
+      22 * scale,
+      65 * scale,
+      30 * scale,
+      78 * scale,
+      50 * scale,
+      78 * scale,
     );
     smilePath.cubicTo(
-      70 * scale, 78 * scale,
-      78 * scale, 65 * scale,
-      78 * scale, 65 * scale,
+      70 * scale,
+      78 * scale,
+      78 * scale,
+      65 * scale,
+      78 * scale,
+      65 * scale,
     );
     smilePath.lineTo(76 * scale, 68 * scale);
     smilePath.cubicTo(
-      76 * scale, 68 * scale,
-      68 * scale, 82 * scale,
-      50 * scale, 82 * scale,
+      76 * scale,
+      68 * scale,
+      68 * scale,
+      82 * scale,
+      50 * scale,
+      82 * scale,
     );
     smilePath.cubicTo(
-      32 * scale, 82 * scale,
-      24 * scale, 68 * scale,
-      24 * scale, 68 * scale,
+      32 * scale,
+      82 * scale,
+      24 * scale,
+      68 * scale,
+      24 * scale,
+      68 * scale,
     );
     smilePath.close();
     canvas.drawPath(smilePath, paint);
