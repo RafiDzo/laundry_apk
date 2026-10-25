@@ -983,27 +983,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Ubah Nama Profil',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 16),
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            color: const Color(0xFF0F172A),
+          ),
         ),
         content: TextField(
           controller: controller,
+          style: GoogleFonts.plusJakartaSans(color: const Color(0xFF0F172A), fontSize: 14),
           decoration: InputDecoration(
             hintText: 'Nama lengkap Anda',
+            hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8)),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
             ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
+            child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1022,8 +1038,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0077E6),
               foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Simpan'),
+            child: Text('Simpan', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -1035,28 +1053,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Pilih Aroma Parfum',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 16),
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            color: const Color(0xFF0F172A),
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: _fragrances.map((f) {
             final isSelected = _selectedFragrance == f.split(' (').first;
-            return ListTile(
-              title: Text(f, style: GoogleFonts.plusJakartaSans(fontSize: 13)),
-              trailing: isSelected
-                  ? const Icon(Icons.check_circle_rounded, color: Color(0xFF0077E6))
-                  : null,
-              onTap: () {
-                setState(() {
-                  _selectedFragrance = f.split(' (').first;
-                });
-                _savePreferences();
-                Navigator.pop(ctx);
-                _showToast('Aroma parfum disetel ke $_selectedFragrance');
-              },
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFFF0F7FF) : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: ListTile(
+                title: Text(
+                  f,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? const Color(0xFF0077E6) : const Color(0xFF0F172A),
+                  ),
+                ),
+                trailing: isSelected
+                    ? const Icon(Icons.check_circle_rounded, color: Color(0xFF0077E6))
+                    : null,
+                onTap: () {
+                  setState(() {
+                    _selectedFragrance = f.split(' (').first;
+                  });
+                  _savePreferences();
+                  Navigator.pop(ctx);
+                  _showToast('Aroma parfum disetel ke $_selectedFragrance');
+                },
+              ),
             );
           }).toList(),
         ),
@@ -1070,26 +1110,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Catatan Khusus Cucian',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 16),
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            color: const Color(0xFF0F172A),
+          ),
         ),
         content: TextField(
           controller: controller,
           maxLines: 3,
+          style: GoogleFonts.plusJakartaSans(color: const Color(0xFF0F172A), fontSize: 13),
           decoration: InputDecoration(
             hintText: 'Contoh: Jangan gunakan pemutih untuk baju batik',
+            hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8), fontSize: 12),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
             ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+            ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
+            child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+          ),
           ElevatedButton(
             onPressed: () {
               setState(() => _specialNotes = controller.text.trim());
@@ -1100,8 +1159,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0077E6),
               foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Simpan'),
+            child: Text('Simpan', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -1114,25 +1175,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Metode Pembayaran Utama',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 16),
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            color: const Color(0xFF0F172A),
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: options.map((opt) {
             final isSelected = _defaultPayment == opt;
-            return ListTile(
-              title: Text(opt, style: GoogleFonts.plusJakartaSans(fontSize: 13)),
-              trailing: isSelected
-                  ? const Icon(Icons.check_circle_rounded, color: Color(0xFF0077E6))
-                  : null,
-              onTap: () {
-                setState(() => _defaultPayment = opt);
-                Navigator.pop(ctx);
-                _showToast('Metode pembayaran utama diperbarui.');
-              },
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFFF0F7FF) : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: ListTile(
+                title: Text(
+                  opt,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? const Color(0xFF0077E6) : const Color(0xFF0F172A),
+                  ),
+                ),
+                trailing: isSelected
+                    ? const Icon(Icons.check_circle_rounded, color: Color(0xFF0077E6))
+                    : null,
+                onTap: () {
+                  setState(() => _defaultPayment = opt);
+                  Navigator.pop(ctx);
+                  _showToast('Metode pembayaran utama diperbarui.');
+                },
+              ),
             );
           }).toList(),
         ),
@@ -1143,57 +1226,241 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showAddressPickerSheet() {
     showModalBottomSheet(
       context: context,
-      constraints: const BoxConstraints(maxWidth: 500),
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Pilih Alamat Antar / Jemput',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 16),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x260F172A),
+                  blurRadius: 30,
+                  offset: Offset(0, -6),
+                ),
+              ],
             ),
-            const SizedBox(height: 14),
-            ..._addresses.map((item) {
-              final isDefault = _primaryAddress.contains(item['label']!);
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: isDefault ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDefault ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
-                  ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Grab Handle
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCBD5E1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    // Header Row
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.location_on_rounded,
+                            color: Color(0xFF0077E6),
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Pilih Alamat Antar / Jemput',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 17,
+                                  color: const Color(0xFF0F172A),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Tentukan lokasi kurir untuk menjemput cucian',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: const Color(0xFF64748B),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    // Address Cards
+                    ..._addresses.map((item) {
+                      final isDefault = _primaryAddress.contains(item['label']!);
+                      IconData addressIcon = Icons.home_rounded;
+                      if (item['label']!.toLowerCase().contains('kantor')) {
+                        addressIcon = Icons.business_rounded;
+                      } else if (item['label']!.toLowerCase().contains('kos')) {
+                        addressIcon = Icons.apartment_rounded;
+                      }
+
+                      return InkWell(
+                        onTap: () {
+                          setState(() {
+                            _primaryAddress = '${item['label']!} • ${item['address']!}';
+                          });
+                          _savePreferences();
+                          Navigator.pop(ctx);
+                          _showToast('Alamat utama diubah ke ${item['label']}');
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDefault ? const Color(0xFFF0F7FF) : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDefault ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+                              width: isDefault ? 2 : 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isDefault
+                                    ? const Color(0xFF0077E6).withValues(alpha: 0.08)
+                                    : const Color(0xFF0F172A).withValues(alpha: 0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isDefault ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  addressIcon,
+                                  size: 18,
+                                  color: isDefault ? const Color(0xFF0077E6) : const Color(0xFF64748B),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          item['label']!,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: const Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        if (isDefault) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFDBEAFE),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              'Utama',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: const Color(0xFF1D4ED8),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      item['address']!,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: const Color(0xFF475569),
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                    if (item['note'] != null && item['note']!.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.info_outline_rounded,
+                                            size: 13,
+                                            color: Color(0xFF94A3B8),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              item['note']!,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 11,
+                                                color: const Color(0xFF64748B),
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Icon(
+                                  isDefault
+                                      ? Icons.check_circle_rounded
+                                      : Icons.radio_button_unchecked_rounded,
+                                  color: isDefault ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
+                                  size: 22,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                 ),
-                child: ListTile(
-                  title: Text(
-                    item['label']!,
-                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
-                  ),
-                  subtitle: Text(
-                    item['address']!,
-                    style: GoogleFonts.plusJakartaSans(fontSize: 11),
-                  ),
-                  trailing: isDefault
-                      ? const Icon(Icons.check_circle_rounded, color: Color(0xFF0077E6))
-                      : null,
-                  onTap: () {
-                    setState(() {
-                      _primaryAddress = '${item['label']!} • ${item['address']!}';
-                    });
-                    _savePreferences();
-                    Navigator.pop(ctx);
-                    _showToast('Alamat utama diubah ke ${item['label']}');
-                  },
-                ),
-              );
-            }),
-          ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1205,13 +1472,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Ganti Kata Sandi',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 16),
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            color: const Color(0xFF0F172A),
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Masukkan kata sandi baru (minimal 6 karakter):',
@@ -1221,20 +1494,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextField(
               controller: passwordController,
               obscureText: true,
+              style: GoogleFonts.plusJakartaSans(color: const Color(0xFF0F172A), fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Kata sandi baru',
+                hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8)),
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
                 ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                ),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
+            child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+          ),
           ElevatedButton(
             onPressed: () async {
               final newPass = passwordController.text.trim();
@@ -1254,8 +1541,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0077E6),
               foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Perbarui'),
+            child: Text('Perbarui', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -1267,17 +1556,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Konfirmasi Keluar',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 16),
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            color: const Color(0xFF0F172A),
+          ),
         ),
         content: Text(
           'Apakah Anda yakin ingin keluar dari akun Washora Anda?',
           style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF64748B)),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
+            child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+          ),
           ElevatedButton(
             onPressed: () async {
               await _authService.signOut();
@@ -1288,8 +1586,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFDC2626),
               foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Keluar'),
+            child: Text('Keluar', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
