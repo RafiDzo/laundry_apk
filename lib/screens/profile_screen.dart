@@ -23,7 +23,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _userData;
 
   String? _customAvatarUrl;
-  String _selectedFragrance = 'Lavender Serenity';
   String _specialNotes = 'Pisahkan pakaian putih & bahan sensitif';
   String _primaryAddress = 'Rumah • Jl. Merdeka No. 12, Panggilan Kurir: Bel Hitam';
   String _userPhone = '0812-3456-7890';
@@ -54,14 +53,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     },
   ];
 
-  final List<String> _fragrances = [
-    'Lavender Serenity (Aroma relaksasi)',
-    'Ocean Breeze (Segar & tahan lama)',
-    'Floral Blossom (Bunga segar lembut)',
-    'Baby Powder (Hypoallergenic bayi)',
-    'Original Fresh (Standar laundry premium)',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -84,7 +75,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() {
       _customAvatarUrl = prefs.getString('pref_avatar_url');
-      _selectedFragrance = prefs.getString('pref_fragrance') ?? 'Lavender Serenity';
       _specialNotes = prefs.getString('pref_notes') ?? 'Pisahkan pakaian putih & bahan sensitif';
       _userPhone = prefs.getString('pref_phone') ?? '0812-3456-7890';
       _primaryAddress = prefs.getString('pref_address') ?? _addresses[0]['address']!;
@@ -114,7 +104,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('pref_fragrance', _selectedFragrance);
     await prefs.setString('pref_notes', _specialNotes);
     await prefs.setString('pref_phone', _userPhone);
     await prefs.setString('pref_address', _primaryAddress);
@@ -733,13 +722,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
           _buildQuietRow(
-            icon: Icons.local_florist_rounded,
-            title: 'Preferensi Parfum',
-            subtitle: _selectedFragrance,
-            onTap: _showFragranceDialog,
-          ),
-          const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
-          _buildQuietRow(
             icon: Icons.note_alt_rounded,
             title: 'Catatan Khusus Cucian',
             subtitle: _specialNotes,
@@ -1068,62 +1050,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Text('Simpan', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showFragranceDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Pilih Aroma Parfum',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w800,
-            fontSize: 17,
-            color: const Color(0xFF0F172A),
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: _fragrances.map((f) {
-            final isSelected = _selectedFragrance == f.split(' (').first;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFFF0F7FF) : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
-                ),
-              ),
-              child: ListTile(
-                title: Text(
-                  f,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? const Color(0xFF0077E6) : const Color(0xFF0F172A),
-                  ),
-                ),
-                trailing: isSelected
-                    ? const Icon(Icons.check_circle_rounded, color: Color(0xFF0077E6))
-                    : null,
-                onTap: () {
-                  setState(() {
-                    _selectedFragrance = f.split(' (').first;
-                  });
-                  _savePreferences();
-                  Navigator.pop(ctx);
-                  _showToast('Aroma parfum disetel ke $_selectedFragrance');
-                },
-              ),
-            );
-          }).toList(),
-        ),
       ),
     );
   }
