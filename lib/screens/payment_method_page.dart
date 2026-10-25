@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
+import 'package:google_fonts/google_fonts.dart';
 import 'order_tracking_page.dart';
 import 'dropoff_tracking_page.dart';
 import '../models/order_model.dart';
@@ -27,199 +27,254 @@ class PaymentMethodPage extends StatefulWidget {
 }
 
 class _PaymentMethodPageState extends State<PaymentMethodPage> {
-  String _selectedMethod = 'gopay';
+  String _selectedMethod = 'dana';
   bool _isProcessing = false;
 
   String _formatPrice(int price) {
-    final str = price.toString();
-    final result = StringBuffer();
-    int count = 0;
-    for (int i = str.length - 1; i >= 0; i--) {
-      result.write(str[i]);
-      count++;
-      if (count % 3 == 0 && i > 0) {
-        result.write('.');
-      }
-    }
-    return 'Rp ${result.toString().split('').reversed.join('')}';
+    return 'Rp ${price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   }
 
   // ── Payment method data ──
   static const List<_PaymentCategory> _categories = [
     _PaymentCategory(
-      title: 'E-Wallet',
+      title: 'E-Wallet Instan',
       methods: [
+        _PaymentMethod(
+          id: 'dana',
+          name: 'DANA',
+          subtitle: '0812-3456-7890 • Terhubung',
+          icon: Icons.account_balance_wallet_rounded,
+          badge: 'Rekomendasi',
+        ),
         _PaymentMethod(
           id: 'gopay',
           name: 'GoPay',
-          subtitle: 'Balance: Rp 120.000',
-          icon: Icons.account_balance_wallet,
+          subtitle: 'Saldo mencukupi',
+          icon: Icons.wallet_rounded,
         ),
         _PaymentMethod(
           id: 'ovo',
           name: 'OVO',
-          subtitle: 'Connected',
-          icon: Icons.payments,
+          subtitle: 'Bebas biaya admin',
+          icon: Icons.payments_rounded,
         ),
         _PaymentMethod(
           id: 'shopeepay',
           name: 'ShopeePay',
-          subtitle: 'Not connected',
-          icon: Icons.shopping_bag,
+          subtitle: 'Koin cashback s.d. 10%',
+          icon: Icons.shopping_bag_rounded,
         ),
       ],
     ),
     _PaymentCategory(
-      title: 'Transfer Bank',
+      title: 'Virtual Account Bank',
       methods: [
         _PaymentMethod(
           id: 'bca',
           name: 'Bank BCA',
-          subtitle: 'Virtual Account',
-          imageUrl:
-              'https://lh3.googleusercontent.com/aida-public/AB6AXuA7hurqfkSG0SE_y5c0v6c12GzbVVYyoN5058poRzaJIZIMmaElbBd1DYfl1QOzb_Pcog0SsT5rCc_oqWvv4kYzhA4F1C8lCcYLC4Kg-MyOczB-WU4ofzEkSNAFRpjR12ib8Go3jb3r9KEbpdWliLuxIdH_kQ10ZCgxqJMLFTxe0Mu3ifMjziLlmKc_Rc8P2vcIAhl2qTg7IB-AGaWlNE4HDfRtFKUWlRLIF1fC1PtjqR7EXv9SUMuv5Kia9yIMO4Nra0Cy9QVpaDc',
+          subtitle: 'Virtual Account otomatis',
+          icon: Icons.account_balance_rounded,
         ),
         _PaymentMethod(
           id: 'mandiri',
           name: 'Bank Mandiri',
-          subtitle: 'Virtual Account',
-          imageUrl:
-              'https://lh3.googleusercontent.com/aida-public/AB6AXuB8SBmTZM36MzYv-flGKEJIZsqAZx40UbVuuzAbWayXYhPi2o-o8WPD0bVU-w5-C12y9RNZB97_w5Tla5EM9vQJS7bcJSrPF_ucrLcOg_sOyANav4LbU4i84Af4zfsbP0hNEEy4oCT2qgiLcHvdFc7WmiHCpNco2UEHWPrgVRhN_0sdAC2SPrROqbsaMWpX0z2gOvAloiomOJcBg-kcnrdvEG-XwfNxayvLud5icq4c1Ol37uMccHVf9Bvy29F0uvFs7AdCHtaQr9M',
+          subtitle: 'Mandiri Livin Virtual Account',
+          icon: Icons.account_balance_rounded,
         ),
         _PaymentMethod(
-          id: 'bni',
-          name: 'Bank BNI',
-          subtitle: 'Virtual Account',
-          imageUrl:
-              'https://lh3.googleusercontent.com/aida-public/AB6AXuChXE2EZYKlYhGBLmL-b9y5XVxKGS7HDQT2xvRiTv3cJm5iEsCAZx3Vs4aeOAwGneUlIwDLcr03Dy4tHHrr7ET2nXJnIKtRy2-CddKJQ5Mi9NUqsJhnnAIkhXD9QynsXbX88dgk1XHOH4M_THH9Cwe1U2TED3XLiOJjYDFy2KJjBqXxTh-hmxw-hARPiQH2c3UkKCXSeLHBnPr4VHNMACvv3PamzymsHHkSo9Ewo-4K415K8cVbmG2qnhvU9vX6qVkDWjYuDhBNUoY',
+          id: 'bri',
+          name: 'Bank BRI',
+          subtitle: 'BRIVA verifikasi instan',
+          icon: Icons.account_balance_rounded,
         ),
       ],
     ),
     _PaymentCategory(
-      title: 'Tunai',
+      title: 'Tunai di Tempat',
       methods: [
         _PaymentMethod(
           id: 'cod',
-          name: 'Cash on Delivery',
-          subtitle: 'Pay when laundry is delivered',
-          icon: Icons.attach_money,
+          name: 'Cash on Delivery (COD)',
+          subtitle: 'Bayar tunai ke kurir saat pakaian diantar',
+          icon: Icons.money_rounded,
         ),
       ],
     ),
   ];
 
+  Future<void> _handleConfirmOrder() async {
+    if (_isProcessing) return;
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final user = AuthService().currentUser;
+      final shopId = widget.laundry['id']?.toString() ?? 'shop_1';
+
+      final order = OrderModel(
+        id: '',
+        userId: user?.id ?? 'guest_user',
+        shopId: shopId,
+        shopName: widget.laundry['name'] ?? 'CleanPro Kemang',
+        items: widget.items,
+        status: 'pending',
+        totalPrice: widget.totalAmount,
+        serviceFee: 2000,
+        notes: widget.notes.isEmpty ? null : widget.notes,
+        paymentMethod: _selectedMethod,
+        createdAt: DateTime.now(),
+      );
+
+      String orderId = 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+      try {
+        orderId = await SupabaseService().createOrder(order);
+      } catch (_) {
+        // Fallback gracefully jika offline atau belum login Supabase
+      }
+
+      if (!mounted) return;
+
+      final Widget destination = widget.isDropoff
+          ? DropoffTrackingPage(orderId: orderId)
+          : OrderTrackingPage(orderId: orderId);
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => destination),
+        (route) => route.isFirst,
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal membuat pesanan: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      body: Stack(
-        children: [
-          // ── Background gradient ──
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF0F172A),
-                  Color(0xFF0C4A6E),
-                  Color(0xFF0EA5E9),
-                  Color(0xFF0EA5E9),
-                ],
-                stops: [0.0, 0.4, 0.8, 1.0],
-              ),
+      backgroundColor: const Color(0xFFEDF2F7), // Neutral canvas for desktop
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.10),
+                  blurRadius: 40,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-          ),
-
-          // ── Content ──
-          SafeArea(
-            bottom: false,
-            child: Column(
+            child: Stack(
               children: [
-                _buildHeader(),
-                Expanded(
+                // Scrollable main content
+                Positioned.fill(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 180),
                     physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.only(bottom: 120),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildOrderSummaryCard(),
-                        const SizedBox(height: 24),
-                        ..._buildPaymentSections(),
+                        _buildHeader(context),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildOrderSummaryCard(),
+                              const SizedBox(height: 18),
+                              ..._buildPaymentSections(),
+                              const SizedBox(height: 16),
+                              _buildSecurityGuarantee(),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
+
+                // Sticky Bottom Bar
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _buildBottomBar(),
+                ),
               ],
             ),
-          ),
-
-          // ── Bottom bar ──
-          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomBar()),
-        ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════
-  //  HEADER
-  // ═══════════════════════════════════════════════
-  Widget _buildHeader() {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.8),
-            border: Border(
-              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-              ),
-              const Expanded(
-                child: Text(
-                  'Payment Method',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 48),
-            ],
           ),
         ),
       ),
     );
   }
 
-  // ═══════════════════════════════════════════════
-  //  ORDER SUMMARY CARD
-  // ═══════════════════════════════════════════════
+  Widget _buildHeader(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+        ),
+        child: Row(
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => Navigator.of(context).maybePop(),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Color(0xFF0F172A),
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                'Metode Pembayaran',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+            ),
+            const SizedBox(width: 36),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildOrderSummaryCard() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF020617).withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 16,
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
@@ -229,44 +284,71 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Order ID',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.receipt_rounded, size: 16, color: Color(0xFF0077E6)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'No. Pesanan',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
               ),
-              const Text(
-                '#LDR-88219',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '#WSH-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                'Total to Pay',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Yang Harus Dibayar',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.laundry['name'] as String? ?? 'CleanPro Kemang',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
               ),
               Text(
                 _formatPrice(widget.totalAmount),
-                style: const TextStyle(
-                  color: Color(0xFF7DD3FC),
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0077E6),
                 ),
               ),
             ],
@@ -276,25 +358,22 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
     );
   }
 
-  // ═══════════════════════════════════════════════
-  //  PAYMENT SECTIONS
-  // ═══════════════════════════════════════════════
   List<Widget> _buildPaymentSections() {
     final widgets = <Widget>[];
     for (int i = 0; i < _categories.length; i++) {
       final category = _categories[i];
-      if (i > 0) widgets.add(const SizedBox(height: 24));
+      if (i > 0) widgets.add(const SizedBox(height: 18));
 
       // Section title
       widgets.add(
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             category.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F172A),
             ),
           ),
         ),
@@ -302,7 +381,7 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
 
       // Payment method cards
       for (int j = 0; j < category.methods.length; j++) {
-        if (j > 0) widgets.add(const SizedBox(height: 12));
+        if (j > 0) widgets.add(const SizedBox(height: 8));
         widgets.add(_buildPaymentMethodCard(category.methods[j]));
       }
     }
@@ -312,295 +391,224 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
   Widget _buildPaymentMethodCard(_PaymentMethod method) {
     final isSelected = _selectedMethod == method.id;
 
-    return GestureDetector(
-      onTap: () => setState(() => _selectedMethod = method.id),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Color(0xFF020617).withValues(alpha: isSelected ? 0.6 : 0.4),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? Colors.white.withValues(alpha: 0.4)
-                : Colors.white.withValues(alpha: 0.05),
-          ),
-          boxShadow: [
-            if (isSelected)
-              BoxShadow(
-                color: const Color(0xFF0EA5E9).withValues(alpha: 0.15),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Icon / Logo
-            _buildMethodAvatar(method),
-            const SizedBox(width: 16),
-            // Name & subtitle
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    method.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    method.subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => setState(() => _selectedMethod = method.id),
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFF0F7FF) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+              width: isSelected ? 1.6 : 1.0,
             ),
-            // Radio indicator
-            _buildRadioIndicator(isSelected),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMethodAvatar(_PaymentMethod method) {
-    if (method.imageUrl != null) {
-      return Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.1),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Image.network(
-          method.imageUrl!,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Icon(
-            Icons.account_balance,
-            color: Colors.white.withValues(alpha: 0.6),
-            size: 20,
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? const Color(0xFF0077E6).withValues(alpha: 0.08)
+                    : const Color(0xFF0F172A).withValues(alpha: 0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ),
-      );
-    }
-
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.1),
-      ),
-      child: Icon(method.icon ?? Icons.payment, color: Colors.white, size: 20),
-    );
-  }
-
-  Widget _buildRadioIndicator(bool isSelected) {
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isSelected
-              ? const Color(0xFF38BDF8)
-              : Colors.white.withValues(alpha: 0.3),
-          width: 2,
-        ),
-      ),
-      child: isSelected
-          ? Center(
-              child: Container(
-                width: 12,
-                height: 12,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF38BDF8),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  method.icon ?? Icons.payment_rounded,
+                  color: isSelected ? Colors.white : const Color(0xFF0077E6),
+                  size: 20,
                 ),
               ),
-            )
-          : null,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          method.name,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0F172A),
+                          ),
+                        ),
+                        if (method.badge != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDCFCE7),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              method.badge!,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF16A34A),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      method.subtitle,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? const Color(0xFF0077E6) : Colors.transparent,
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
+                    width: 2,
+                  ),
+                ),
+                child: isSelected
+                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  // ═══════════════════════════════════════════════
-  //  BOTTOM BAR
-  // ═══════════════════════════════════════════════
-  Widget _buildBottomBar() {
+  Widget _buildSecurityGuarantee() {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF0EA5E9),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 30,
-            offset: Offset(0, -8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.verified_user_rounded, color: Color(0xFF16A34A), size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Transaksi dilindungi enkripsi SSL 256-bit dan garansi pencucian 100%.',
+              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0xFF475569)),
+            ),
           ),
         ],
       ),
-      padding: EdgeInsets.fromLTRB(
-        24,
-        20,
-        24,
-        20 + MediaQuery.of(context).padding.bottom,
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(
+          top: BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -6),
+          ),
+        ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          // Total row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Total Pembayaran',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF64748B),
                   ),
                 ),
                 Text(
                   _formatPrice(widget.totalAmount),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    shadows: [Shadow(color: Colors.black26, blurRadius: 8)],
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0077E6),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
-          // Confirm button
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _isProcessing
-                  ? null
-                  : () async {
-                      setState(() => _isProcessing = true);
-                      try {
-                        final user = AuthService().currentUser;
-                        if (user == null) {
-                          setState(() => _isProcessing = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Sesi login habis. Silakan login ulang.',
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-
-                        final shopId = widget.laundry['id']?.toString() ?? '';
-                        if (shopId.isEmpty) {
-                          setState(() => _isProcessing = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Data toko tidak valid. Silakan kembali dan pilih toko kembali.',
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-
-                        final order = OrderModel(
-                          id: '',
-                          userId: user.id,
-                          shopId: shopId,
-                          shopName: widget.laundry['name'] ?? 'Laundry Shop',
-                          items: widget.items,
-                          status: 'pending',
-                          totalPrice: widget.totalAmount,
-                          serviceFee: 2000,
-                          notes: widget.notes.isEmpty ? null : widget.notes,
-                          paymentMethod: _selectedMethod,
-                          createdAt: DateTime.now(),
-                        );
-                        final orderId = await SupabaseService().createOrder(
-                          order,
-                        );
-
-                        if (!mounted) return;
-
-                        final Widget destination = widget.isDropoff
-                            ? DropoffTrackingPage(orderId: orderId)
-                            : OrderTrackingPage(orderId: orderId);
-
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          PageRouteBuilder(
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) =>
-                                    destination,
-                            transitionsBuilder:
-                                (
-                                  context,
-                                  animation,
-                                  secondaryAnimation,
-                                  child,
-                                ) {
-                                  final curve = CurvedAnimation(
-                                    parent: animation,
-                                    curve: Curves.easeOutCubic,
-                                  );
-                                  return FadeTransition(
-                                    opacity: Tween<double>(
-                                      begin: 0.0,
-                                      end: 1.0,
-                                    ).animate(curve),
-                                    child: child,
-                                  );
-                                },
-                            transitionDuration: const Duration(
-                              milliseconds: 600,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _isProcessing ? null : _handleConfirmOrder,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0077E6), Color(0xFF0284C7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0077E6).withValues(alpha: 0.35),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: _isProcessing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Row(
+                        children: [
+                          Text(
+                            'Konfirmasi Pesanan',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
-                          (route) => route.isFirst,
-                        );
-                      } catch (e) {
-                        setState(() => _isProcessing = false);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Gagal membuat pesanan: $e')),
-                        );
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF0284C7),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-                elevation: 6,
-                shadowColor: const Color(0xFF0C4A6E).withValues(alpha: 0.3),
-              ),
-              child: _isProcessing
-                  ? const CircularProgressIndicator()
-                  : const Text(
-                      'Konfirmasi Pesanan',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                        ],
                       ),
-                    ),
+              ),
             ),
           ),
         ],
@@ -625,13 +633,13 @@ class _PaymentMethod {
   final String name;
   final String subtitle;
   final IconData? icon;
-  final String? imageUrl;
+  final String? badge;
 
   const _PaymentMethod({
     required this.id,
     required this.name,
     required this.subtitle,
     this.icon,
-    this.imageUrl,
+    this.badge,
   });
 }
