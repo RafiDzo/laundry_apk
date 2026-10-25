@@ -190,9 +190,13 @@ class AuthService {
   // ================= SIGN OUT =================
 
   Future<void> signOut() async {
-    final GoogleSignIn googleSignIn = GoogleSignIn();
-    await googleSignIn.signOut();
-    await _auth.auth.signOut();
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
+    } catch (_) {}
+    try {
+      await _auth.auth.signOut();
+    } catch (_) {}
   }
 
   // ================= HELPER =================

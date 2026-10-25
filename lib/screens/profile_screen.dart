@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import '../models/user_model.dart';
 import 'order_tracking_page.dart';
+import 'role_selection_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -2893,46 +2894,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showLogoutConfirmDialog() {
+    bool isLoggingOut = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Konfirmasi Keluar',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w800,
-            fontSize: 17,
-            color: const Color(0xFF0F172A),
-          ),
-        ),
-        content: Text(
-          'Apakah Anda yakin ingin keluar dari akun Washora Anda?',
-          style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF64748B)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
-            child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await _authService.signOut();
-              if (mounted) {
-                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            'Konfirmasi Keluar',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              color: const Color(0xFF0F172A),
             ),
-            child: Text('Keluar', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
           ),
-        ],
+          content: Text(
+            'Apakah Anda yakin ingin keluar dari akun Washora Anda?',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF64748B)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoggingOut ? null : () => Navigator.pop(ctx),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
+              child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+            ),
+            ElevatedButton(
+              onPressed: isLoggingOut
+                  ? null
+                  : () async {
+                      setDialogState(() => isLoggingOut = true);
+
+                      try {
+                        await _authService.signOut();
+                      } catch (_) {}
+
+                      // Bersihkan session preferensi lokal
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.remove('pref_user_name');
+                      await prefs.remove('pref_avatar_url');
+
+                      if (!ctx.mounted) return;
+                      Navigator.pop(ctx); // Tutup dialog
+
+                      if (!mounted) return;
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+                        (route) => false,
+                      );
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: isLoggingOut
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text('Keluar', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
       ),
     );
   }
