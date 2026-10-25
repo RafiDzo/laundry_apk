@@ -37,6 +37,18 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
   // ── Payment method data ──
   static const List<_PaymentCategory> _categories = [
     _PaymentCategory(
+      title: 'QRIS (Semua E-Wallet & Bank)',
+      methods: [
+        _PaymentMethod(
+          id: 'qris',
+          name: 'QRIS Nasional',
+          subtitle: 'Scan cepat via BCA, Mandiri, BRI, DANA, GoPay, OVO, ShopeePay',
+          icon: Icons.qr_code_scanner_rounded,
+          badge: 'Instan Bebas Admin',
+        ),
+      ],
+    ),
+    _PaymentCategory(
       title: 'E-Wallet Instan',
       methods: [
         _PaymentMethod(
@@ -416,82 +428,188 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
               ),
             ],
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  method.icon ?? Icons.payment_rounded,
-                  color: isSelected ? Colors.white : const Color(0xFF0077E6),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      method.icon ?? Icons.payment_rounded,
+                      color: isSelected ? Colors.white : const Color(0xFF0077E6),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          children: [
+                            Text(
+                              method.name,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                            if (method.badge != null) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFDCFCE7),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  method.badge!,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF16A34A),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                         Text(
-                          method.name,
+                          method.subtitle,
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF0F172A),
+                            fontSize: 11,
+                            color: const Color(0xFF64748B),
                           ),
                         ),
-                        if (method.badge != null) ...[
-                          const SizedBox(width: 6),
+                      ],
+                    ),
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected ? const Color(0xFF0077E6) : Colors.transparent,
+                      border: Border.all(
+                        color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
+                        width: 2,
+                      ),
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
+                        : null,
+                  ),
+                ],
+              ),
+              if (method.id == 'qris' && isSelected) ...[
+                const SizedBox(height: 14),
+                const Divider(height: 1, color: Color(0xFFDBEAFE)),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFDCFCE7),
+                              color: const Color(0xFFDC2626),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              method.badge!,
+                              'QRIS',
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF16A34A),
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
                               ),
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'PEMBAYARAN RESMI BERLISENSI BI',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
                         ],
-                      ],
-                    ),
-                    Text(
-                      method.subtitle,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        color: const Color(0xFF64748B),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isSelected ? const Color(0xFF0077E6) : Colors.transparent,
-                  border: Border.all(
-                    color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
-                    width: 2,
+                      const SizedBox(height: 10),
+                      Container(
+                        width: 160,
+                        height: 160,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            const Icon(
+                              Icons.qr_code_2_rounded,
+                              size: 144,
+                              color: Color(0xFF0F172A),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFF0077E6), width: 1.5),
+                              ),
+                              child: const Icon(
+                                Icons.local_laundry_service_rounded,
+                                size: 16,
+                                color: Color(0xFF0077E6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'NMID: ID102003928192801',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF475569),
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Buka m-Banking atau E-Wallet apa saja lalu scan kode QR di atas.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: isSelected
-                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
-                    : null,
-              ),
+              ],
             ],
           ),
         ),
