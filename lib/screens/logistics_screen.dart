@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'payment_method_page.dart';
 import '../models/order_model.dart';
 
@@ -22,191 +22,136 @@ class LogisticsScreen extends StatefulWidget {
   State<LogisticsScreen> createState() => _LogisticsScreenState();
 }
 
-class _LogisticsScreenState extends State<LogisticsScreen>
-    with SingleTickerProviderStateMixin {
-  // Delivery type: 0 = Kurir, 1 = Drop-off
+class _LogisticsScreenState extends State<LogisticsScreen> {
+  // 0 = Kurir Antar-Jemput, 1 = Drop-off Mandiri
   int _selectedDeliveryType = 0;
 
-  // Schedule
+  // Jadwal
   int _selectedDayIndex = 0;
-  int _selectedTimeIndex = 1; // 11:00 default
+  int _selectedTimeIndex = 1; // Default 11:00
 
-  late AnimationController _entranceController;
+  String _userAddress = 'Jl. Merdeka No. 12, RT 02 / RW 05, Menteng';
+  String _userPhone = '0812-3456-7890';
 
   final List<Map<String, String>> _days = [
-    {'day': 'SEN', 'date': '14'},
-    {'day': 'SEL', 'date': '15'},
-    {'day': 'RAB', 'date': '16'},
-    {'day': 'KAM', 'date': '17'},
-    {'day': 'JUM', 'date': '18'},
+    {'day': 'HARI INI', 'date': '26', 'month': 'Okt'},
+    {'day': 'BESOK', 'date': '27', 'month': 'Okt'},
+    {'day': 'RABU', 'date': '28', 'month': 'Okt'},
+    {'day': 'KAMIS', 'date': '29', 'month': 'Okt'},
+    {'day': 'JUMAT', 'date': '30', 'month': 'Okt'},
   ];
 
   final List<Map<String, dynamic>> _timeSlots = [
-    {'time': '09:00', 'available': false},
-    {'time': '11:00', 'available': true},
-    {'time': '13:00', 'available': true},
-    {'time': '15:00', 'available': true},
-    {'time': '17:00', 'available': true},
-    {'time': '19:00', 'available': true},
+    {'time': '09:00', 'label': 'Pagi', 'available': true},
+    {'time': '11:00', 'label': 'Siang', 'available': true},
+    {'time': '13:00', 'label': 'Siang', 'available': true},
+    {'time': '15:00', 'label': 'Sore', 'available': true},
+    {'time': '17:00', 'label': 'Sore', 'available': true},
+    {'time': '19:00', 'label': 'Malam', 'available': false},
   ];
 
   @override
   void initState() {
     super.initState();
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-    _entranceController.forward();
+    _loadUserAddress();
   }
 
-  @override
-  void dispose() {
-    _entranceController.dispose();
-    super.dispose();
+  Future<void> _loadUserAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    final addr = prefs.getString('pref_address');
+    final phone = prefs.getString('pref_phone');
+    if (mounted) {
+      setState(() {
+        if (addr != null && addr.isNotEmpty) _userAddress = addr;
+        if (phone != null && phone.isNotEmpty) _userPhone = phone;
+      });
+    }
   }
 
-  Widget _buildStaggeredChild({required int index, required Widget child}) {
-    final begin = (index * 0.12).clamp(0.0, 0.7);
-    final end = (begin + 0.3).clamp(0.0, 1.0);
+  int get _deliveryFee => _selectedDeliveryType == 0 ? 0 : 0; // Promo Gratis Ongkir aktif
 
-    final slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.25), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _entranceController,
-            curve: Interval(begin, end, curve: Curves.easeOutCubic),
-          ),
-        );
+  int get _finalTotalAmount => widget.totalAmount + _deliveryFee;
 
-    final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: Interval(begin, end, curve: Curves.easeOut),
+  String _formatPrice(int price) {
+    return 'Rp ${price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+  }
+
+  void _navigateToPayment() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentMethodPage(
+          isDropoff: _selectedDeliveryType == 1,
+          laundry: widget.laundry,
+          items: widget.items,
+          totalAmount: _finalTotalAmount,
+          notes: widget.notes,
+        ),
       ),
-    );
-
-    return SlideTransition(
-      position: slideAnimation,
-      child: FadeTransition(opacity: fadeAnimation, child: child),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF0EA5E9)],
-            stops: [0.0, 0.5, 1.0],
-          ),
-        ),
-        child: Stack(
-          children: [
-            // Header
-            Positioned(top: 0, left: 0, right: 0, child: _buildHeader()),
-
-            // Scrollable content
-            Positioned.fill(
-              top: 0,
-              child: SafeArea(
-                bottom: false,
-                child: Column(
-                  children: [
-                    // Spacer for header
-                    const SizedBox(height: 56),
-                    // Scrollable body
-                    Expanded(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 140),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Opsi Pengiriman
-                            _buildStaggeredChild(
-                              index: 0,
-                              child: _buildDeliveryOptions(),
-                            ),
-                            const SizedBox(height: 28),
-
-                            // Jadwal Penjemputan
-                            _buildStaggeredChild(
-                              index: 1,
-                              child: _buildScheduleSection(),
-                            ),
-                            const SizedBox(height: 28),
-
-                            // Estimasi Pengembalian
-                            _buildStaggeredChild(
-                              index: 2,
-                              child: _buildEstimationCard(),
-                            ),
-                            const SizedBox(height: 28),
-
-                            // Ringkasan Biaya
-                            _buildStaggeredChild(
-                              index: 3,
-                              child: _buildCostSummary(),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+      backgroundColor: const Color(0xFFEDF2F7), // Neutral canvas for desktop
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.10),
+                  blurRadius: 40,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 10),
                 ),
-              ),
+              ],
             ),
-
-            // Bottom button
-            _buildBottomButton(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.8),
-            border: Border(
-              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    style: IconButton.styleFrom(shape: const CircleBorder()),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Pilih Layanan & Waktu',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+            child: Stack(
+              children: [
+                // Scrollable main content
+                Positioned.fill(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.only(bottom: 120),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(context),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildAddressCard(),
+                              const SizedBox(height: 18),
+                              _buildDeliveryOptions(),
+                              const SizedBox(height: 20),
+                              _buildScheduleSection(),
+                              const SizedBox(height: 20),
+                              _buildEstimationCard(),
+                              const SizedBox(height: 20),
+                              _buildCostSummary(),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 48),
-                ],
-              ),
+                ),
+
+                // Sticky Bottom Action Bar
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _buildBottomActionBar(),
+                ),
+              ],
             ),
           ),
         ),
@@ -215,7 +160,153 @@ class _LogisticsScreenState extends State<LogisticsScreen>
   }
 
   // ═══════════════════════════════════════════════
-  //  OPSI PENGIRIMAN
+  //  1. APP HEADER
+  // ═══════════════════════════════════════════════
+  Widget _buildHeader(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+        ),
+        child: Row(
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => Navigator.pop(context),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Color(0xFF0F172A),
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                'Metode Pengiriman & Waktu',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+            ),
+            const SizedBox(width: 36),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  //  2. ADDRESS CARD
+  // ═══════════════════════════════════════════════
+  Widget _buildAddressCard() {
+    final isKurir = _selectedDeliveryType == 0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      isKurir ? Icons.location_on_rounded : Icons.store_mall_directory_rounded,
+                      color: const Color(0xFF0077E6),
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    isKurir ? 'Alamat Penjemputan' : 'Lokasi Outlet Drop-off',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isKurir ? 'Alamat Utama' : 'Terdekat',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF16A34A),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            isKurir
+                ? _userAddress
+                : (widget.laundry['address'] as String? ?? 'Jl. Kemang Raya No. 12A, Jakarta Selatan'),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF334155),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isKurir
+                ? 'Kontak: $_userPhone (Rafi Kurniawan)'
+                : 'Outlet: ${widget.laundry['name'] ?? 'CleanPro Kemang'} • Buka 08:00 - 21:00',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  //  3. OPSI PENGIRIMAN
   // ═══════════════════════════════════════════════
   Widget _buildDeliveryOptions() {
     return Column(
@@ -223,232 +314,252 @@ class _LogisticsScreenState extends State<LogisticsScreen>
       children: [
         Text(
           'Opsi Pengiriman',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF0F172A),
           ),
         ),
-        const SizedBox(height: 14),
-
-        // Kurir Antar-Jemput
-        _buildDeliveryOption(
+        const SizedBox(height: 10),
+        _buildDeliveryCard(
           index: 0,
-          icon: Icons.two_wheeler,
-          title: 'Kurir Antar-Jemput',
-          subtitle: 'Kami jemput & antar cucianmu',
+          title: 'Kurir Antar-Jemput Washora',
+          subtitle: 'Kurir datang menjemput cucian dan mengantar kembali ke rumah Anda.',
+          badge: 'Paling Populer',
+          icon: Icons.two_wheeler_rounded,
+          feeLabel: 'Gratis Promo',
         ),
-        const SizedBox(height: 12),
-
-        // Drop-off Sendiri
-        _buildDeliveryOption(
+        const SizedBox(height: 10),
+        _buildDeliveryCard(
           index: 1,
-          icon: Icons.storefront,
-          title: 'Drop-off Sendiri',
-          subtitle: 'Antar langsung ke outlet',
+          title: 'Drop-off Mandiri ke Outlet',
+          subtitle: 'Anda mengantar langsung pakaian ke kasir outlet dan mengambil saat selesai.',
+          badge: 'Hemat',
+          icon: Icons.storefront_rounded,
+          feeLabel: 'Bebas Biaya',
         ),
       ],
     );
   }
 
-  Widget _buildDeliveryOption({
+  Widget _buildDeliveryCard({
     required int index,
-    required IconData icon,
     required String title,
     required String subtitle,
+    required String badge,
+    required IconData icon,
+    required String feeLabel,
   }) {
     final isSelected = _selectedDeliveryType == index;
 
-    return GestureDetector(
-      onTap: () => setState(() => _selectedDeliveryType = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: isSelected
-              ? Colors.black.withValues(alpha: 0.4)
-              : Colors.black.withValues(alpha: 0.2),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF257BF4)
-                : Colors.white.withValues(alpha: 0.05),
-            width: 2,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => setState(() => _selectedDeliveryType = index),
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFF0F7FF) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+              width: isSelected ? 1.6 : 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected
+                    ? const Color(0xFF0077E6).withValues(alpha: 0.08)
+                    : const Color(0xFF0F172A).withValues(alpha: 0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF257BF4).withValues(alpha: 0.2),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          children: [
-            // Icon
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected
-                    ? const Color(0xFF257BF4)
-                    : Colors.white.withValues(alpha: 0.1),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFF257BF4).withValues(alpha: 0.3),
-                          blurRadius: 10,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Icon(icon, color: Colors.white, size: 24),
-            ),
-            const SizedBox(width: 14),
-
-            // Text
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: const Color(0xFFCBD5E1),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Radio indicator
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected
-                    ? const Color(0xFF257BF4)
-                    : Colors.transparent,
-                border: Border.all(
-                  color: isSelected
-                      ? const Color(0xFF257BF4)
-                      : const Color(0xFF64748B).withValues(alpha: 0.5),
-                  width: 2,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: isSelected ? Colors.white : const Color(0xFF0077E6),
+                  size: 22,
                 ),
               ),
-              child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 14)
-                  : null,
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            feeLabel,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected ? Colors.white : const Color(0xFF0077E6),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: const Color(0xFF64748B),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? const Color(0xFF0077E6) : Colors.transparent,
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
+                    width: 2,
+                  ),
+                ),
+                child: isSelected
+                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
+                    : null,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   // ═══════════════════════════════════════════════
-  //  JADWAL PENJEMPUTAN
+  //  4. JADWAL PENJEMPUTAN / DROP-OFF
   // ═══════════════════════════════════════════════
   Widget _buildScheduleSection() {
+    final isKurir = _selectedDeliveryType == 0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Jadwal Penjemputan',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              isKurir ? 'Jadwal Kedatangan Kurir' : 'Jadwal Drop-off ke Outlet',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+            Text(
+              'Pilih Jam',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF0077E6),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
-        // Day selector (horizontal scroll)
+        // Day Selector
         SizedBox(
-          height: 78,
-          child: ListView.builder(
+          height: 68,
+          child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             itemCount: _days.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
+              final day = _days[index];
               final isSelected = _selectedDayIndex == index;
-              return Padding(
-                padding: EdgeInsets.only(
-                  right: index < _days.length - 1 ? 10 : 0,
-                ),
-                child: GestureDetector(
-                  onTap: () => setState(() => _selectedDayIndex = index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 70,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: isSelected
-                          ? const Color(0xFF257BF4)
-                          : Colors.black.withValues(alpha: 0.2),
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFF257BF4).withValues(alpha: 0.5)
-                            : Colors.white.withValues(alpha: 0.1),
+
+              return InkWell(
+                onTap: () => setState(() => _selectedDayIndex = index),
+                borderRadius: BorderRadius.circular(14),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 76,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF0077E6) : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+                      width: isSelected ? 1.6 : 1.0,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF0077E6).withValues(alpha: 0.25),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        day['day']!,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF64748B),
+                        ),
                       ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF257BF4,
-                                ).withValues(alpha: 0.4),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          _days[index]['day']!,
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: isSelected
-                                ? Colors.white.withValues(alpha: 0.9)
-                                : const Color(0xFFCBD5E1),
-                          ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${day['date']} ${day['month']}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected ? Colors.white : const Color(0xFF0F172A),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _days[index]['date']!,
-                          style: GoogleFonts.poppins(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               );
             },
           ),
         ),
-        const SizedBox(height: 16),
+
+        const SizedBox(height: 14),
 
         // Time slots grid
         GridView.builder(
@@ -456,9 +567,9 @@ class _LogisticsScreenState extends State<LogisticsScreen>
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 2.4,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 2.2,
           ),
           itemCount: _timeSlots.length,
           itemBuilder: (context, index) {
@@ -466,49 +577,55 @@ class _LogisticsScreenState extends State<LogisticsScreen>
             final isAvailable = slot['available'] as bool;
             final isSelected = _selectedTimeIndex == index && isAvailable;
 
-            return GestureDetector(
-              onTap: isAvailable
-                  ? () => setState(() => _selectedTimeIndex = index)
-                  : null,
+            return InkWell(
+              onTap: isAvailable ? () => setState(() => _selectedTimeIndex = index) : null,
+              borderRadius: BorderRadius.circular(12),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 180),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   color: !isAvailable
-                      ? Colors.white.withValues(alpha: 0.05)
+                      ? const Color(0xFFF1F5F9)
                       : isSelected
-                      ? const Color(0xFF257BF4)
-                      : Colors.black.withValues(alpha: 0.2),
+                          ? const Color(0xFF0077E6)
+                          : Colors.white,
                   border: Border.all(
                     color: !isAvailable
-                        ? Colors.white.withValues(alpha: 0.05)
+                        ? const Color(0xFFE2E8F0)
                         : isSelected
-                        ? const Color(0xFF257BF4).withValues(alpha: 0.5)
-                        : Colors.white.withValues(alpha: 0.1),
+                            ? const Color(0xFF0077E6)
+                            : const Color(0xFFE2E8F0),
                   ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: const Color(
-                              0xFF257BF4,
-                            ).withValues(alpha: 0.4),
-                            blurRadius: 10,
-                          ),
-                        ]
-                      : null,
                 ),
                 child: Center(
-                  child: Text(
-                    slot['time'] as String,
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: !isAvailable
-                          ? const Color(0xFF64748B).withValues(alpha: 0.5)
-                          : isSelected
-                          ? Colors.white
-                          : const Color(0xFFE2E8F0),
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        slot['time'] as String,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: !isAvailable
+                              ? const Color(0xFF94A3B8)
+                              : isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
+                        ),
+                      ),
+                      Text(
+                        !isAvailable ? 'Penuh' : (slot['label'] as String),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: !isAvailable
+                              ? const Color(0xFFCBD5E1)
+                              : isSelected
+                                  ? Colors.white.withValues(alpha: 0.8)
+                                  : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -520,327 +637,299 @@ class _LogisticsScreenState extends State<LogisticsScreen>
   }
 
   // ═══════════════════════════════════════════════
-  //  ESTIMASI PENGEMBALIAN
+  //  5. ESTIMASI PENGEMBALIAN
   // ═══════════════════════════════════════════════
   Widget _buildEstimationCard() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Estimasi Pengembalian',
-          style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
-        ),
-        const SizedBox(height: 14),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: Colors.black.withValues(alpha: 0.3),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  // Glow decoration
-                  Positioned(
-                    top: -20,
-                    right: -20,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF257BF4).withValues(alpha: 0.2),
-                      ),
-                    ),
-                  ),
-                  // Content
-                  Column(
-                    children: [
-                      Icon(
-                        Icons.calendar_month,
-                        size: 36,
-                        color: const Color(0xFF38BDF8),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Kamis, 17 Feb - 14:00 WIB',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Estimasi waktu berdasarkan layanan yang dipilih.',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: const Color(0xFFCBD5E1),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F7FF),
+              borderRadius: BorderRadius.circular(14),
             ),
+            child: const Icon(Icons.event_available_rounded, color: Color(0xFF0077E6), size: 26),
           ),
-        ),
-      ],
-    );
-  }
-
-  // ═══════════════════════════════════════════════
-  //  RINGKASAN BIAYA SEMENTARA
-  // ═══════════════════════════════════════════════
-  Widget _buildCostSummary() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: Colors.black.withValues(alpha: 0.3),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Glow decoration
-              Positioned(
-                top: -20,
-                right: -20,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF257BF4).withValues(alpha: 0.2),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Estimasi Cucian Bersih Selesai',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF64748B),
                   ),
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'RINGKASAN BIAYA SEMENTARA',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFCBD5E1),
-                      letterSpacing: 1.2,
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  'Senin, 27 Okt • 17:00 WIB',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0F172A),
                   ),
-                  const SizedBox(height: 16),
-
-                  // Estimasi Berat
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Estimasi Berat',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: const Color(0xFFE2E8F0),
-                        ),
-                      ),
-                      Text(
-                        '3 kg',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
+                ),
+                Text(
+                  'Pakaian dikemas higienis & wangi siap pakai',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    color: const Color(0xFF16A34A),
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(height: 8),
-
-                  // Estimasi Harga
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Estimasi Harga',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: const Color(0xFFE2E8F0),
-                        ),
-                      ),
-                      Text(
-                        'Rp ${widget.totalAmount}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF38BDF8),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Info note
-                  Container(
-                    padding: const EdgeInsets.only(top: 14),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.1),
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          color: Color(0xFFFACC15),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Harga final akan ditentukan setelah cucian ditimbang oleh kurir atau outlet.',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontStyle: FontStyle.italic,
-                              color: const Color(0xFFCBD5E1),
-                              height: 1.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   // ═══════════════════════════════════════════════
-  //  BOTTOM BUTTON
+  //  6. RINGKASAN BIAYA SEMENTARA
   // ═══════════════════════════════════════════════
-  Widget _buildBottomButton() {
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          24,
-          20,
-          20 + MediaQuery.of(context).padding.bottom,
-        ),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF0EA5E9).withValues(alpha: 0.0),
-              const Color(0xFF0EA5E9).withValues(alpha: 0.9),
+  Widget _buildCostSummary() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Rincian Biaya & Logistik',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Subtotal Layanan Laundry',
+                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF64748B)),
+              ),
+              Text(
+                _formatPrice(widget.totalAmount - 2000),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
             ],
           ),
-        ),
-        child: GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) =>
-                    PaymentMethodPage(
-                      isDropoff: _selectedDeliveryType == 1,
-                      laundry: widget.laundry,
-                      items: widget.items,
-                      totalAmount: widget.totalAmount,
-                      notes: widget.notes,
-                    ),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                      final curve = CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.easeOutCubic,
-                      );
-                      return SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(1.0, 0.0),
-                          end: Offset.zero,
-                        ).animate(curve),
-                        child: FadeTransition(
-                          opacity: Tween<double>(
-                            begin: 0.5,
-                            end: 1.0,
-                          ).animate(curve),
-                          child: child,
-                        ),
-                      );
-                    },
-                transitionDuration: const Duration(milliseconds: 400),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Biaya Layanan Aplikasi',
+                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF64748B)),
               ),
-            );
-          },
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: const Color(0xFF257BF4),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
+              Text(
+                _formatPrice(2000),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF0F172A),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Ongkos Kirim Kurir',
+                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF64748B)),
+              ),
+              Text(
+                'GRATIS (Promo)',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF16A34A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Pembayaran',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+              Text(
+                _formatPrice(_finalTotalAmount),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0077E6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFFEF3C7)),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Pilih Pembayaran',
-                  style: GoogleFonts.poppins(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                const Icon(Icons.info_outline_rounded, size: 15, color: Color(0xFFD97706)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Harga final dapat disesuaikan jika bobot riil berbeda setelah ditimbang kurir/outlet.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: const Color(0xFFB45309),
+                      height: 1.35,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  //  7. STICKY BOTTOM ACTION BAR
+  // ═══════════════════════════════════════════════
+  Widget _buildBottomActionBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(
+          top: BorderSide(color: Color(0xFFE2E8F0)),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Total Summary
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Total Tagihan',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF64748B),
+                  ),
+                ),
+                Text(
+                  _formatPrice(_finalTotalAmount),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0077E6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Action Button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _navigateToPayment,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0077E6), Color(0xFF0284C7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0077E6).withValues(alpha: 0.35),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Pilih Pembayaran',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
