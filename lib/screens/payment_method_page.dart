@@ -121,11 +121,19 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
 
     try {
       final user = AuthService().currentUser;
-      final shopId = widget.laundry['id']?.toString() ?? 'shop_1';
+      final shopId = widget.laundry['id']?.toString();
+
+      // Tanpa user & outlet yang valid, pesanan tidak akan pernah sampai ke mitra
+      if (user == null) {
+        throw 'Sesi login berakhir. Silakan login ulang lalu pesan kembali.';
+      }
+      if (shopId == null || shopId.isEmpty || shopId.startsWith('dummy-')) {
+        throw 'Outlet tidak valid. Silakan pilih outlet dari Beranda.';
+      }
 
       final order = OrderModel(
         id: '',
-        userId: user?.id ?? 'guest_user',
+        userId: user.id,
         shopId: shopId,
         shopName: widget.laundry['name'] ?? 'CleanPro Kemang',
         items: widget.items,
@@ -135,13 +143,14 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
         notes: widget.notes.isEmpty ? null : widget.notes,
         paymentMethod: _selectedMethod,
         createdAt: DateTime.now(),
+        deliveryType: widget.isDropoff ? 'dropoff' : 'pickup',
       );
 
-      String orderId = 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+      String orderId;
       try {
         orderId = await SupabaseService().createOrder(order);
-      } catch (_) {
-        // Fallback gracefully jika offline atau belum login Supabase
+      } catch (e) {
+        throw 'Pesanan gagal dikirim ke outlet. Periksa koneksi lalu coba lagi.';
       }
 
       if (!mounted) return;
@@ -159,7 +168,10 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
       if (mounted) {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal membuat pesanan: $e')),
+          SnackBar(
+            content: Text(e is String ? e : 'Gagal membuat pesanan: $e'),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
         );
       }
     }

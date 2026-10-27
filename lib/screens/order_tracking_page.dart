@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
+import '../models/order_model.dart';
+import '../services/supabase_service.dart';
 import 'home_screen.dart';
 
 class OrderTrackingPage extends StatefulWidget {
@@ -30,10 +34,44 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
   static const _textHint = Color(0xFF94A3B8);
   static const _border = Color(0xFFE2E8F0);
   static const _bgOuter = Color(0xFFEDF2F7);
+  static const _red = Color(0xFFDC2626);
+  static const _redLight = Color(0xFFFEF2F2);
+  static const _green = Color(0xFF16A34A);
+
+  // Data pesanan realtime dari Supabase
+  OrderModel? _order;
+  bool _isLoading = true;
+  StreamSubscription<OrderModel?>? _orderSub;
+  Timer? _reconnectTimer;
+
+  void _subscribeOrder() {
+    _orderSub?.cancel();
+    _orderSub = SupabaseService().watchOrder(widget.orderId).listen(
+      (order) {
+        if (mounted) {
+          setState(() {
+            _order = order;
+            _isLoading = false;
+          });
+        }
+      },
+      onError: (e) {
+        print('Error watchOrder: $e');
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        // Koneksi realtime terputus: sambung ulang otomatis
+        _reconnectTimer?.cancel();
+        _reconnectTimer = Timer(const Duration(seconds: 5), () {
+          if (mounted) _subscribeOrder();
+        });
+      },
+    );
+  }
 
   @override
   void initState() {
     super.initState();
+    _subscribeOrder();
     _spinController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 3),
@@ -56,6 +94,8 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
 
   @override
   void dispose() {
+    _reconnectTimer?.cancel();
+    _orderSub?.cancel();
     _spinController.dispose();
     _pulseController.dispose();
     _entranceController.dispose();
@@ -101,19 +141,30 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
               children: [
                 _buildHeader(orderId),
                 Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                    child: Column(
-                      children: [
-                        _staggered(index: 0, child: _buildStatusCard()),
-                        const SizedBox(height: 16),
-                        _staggered(index: 1, child: _buildDriverCard()),
-                        const SizedBox(height: 16),
-                        _staggered(index: 2, child: _buildLiveProgressCard()),
-                      ],
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: _blue))
+                      : _order == null
+                          ? _buildNotFound()
+                          : SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                              child: Column(
+                                children: [
+                                  _staggered(
+                                    index: 0,
+                                    child: _order!.isCancelled
+                                        ? _buildCancelledCard(_order!)
+                                        : _buildStatusCard(_order!),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _staggered(index: 1, child: _buildOutletCard(_order!)),
+                                  if (!_order!.isCancelled) ...[
+                                    const SizedBox(height: 16),
+                                    _staggered(index: 2, child: _buildLiveProgressCard(_order!)),
+                                  ],
+                                ],
+                              ),
+                            ),
                 ),
                 _buildBottomActions(),
               ],
@@ -180,7 +231,109 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
   // ══════════════════════════════════════════
   //  STATUS CARD (spinning washer)
   // ══════════════════════════════════════════
-  Widget _buildStatusCard() {
+  String _formatRupiah(int amount) =>
+      'Rp ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+
+  String _formatTime(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+  String _weightText(OrderModel order) {
+    final kg = order.items
+        .where((i) => i.unit.toLowerCase().contains('kg'))
+        .fold<num>(0, (sum, i) => sum + i.qty);
+    if (kg > 0) return '${kg == kg.roundToDouble() ? kg.toInt() : kg.toStringAsFixed(1)} kg';
+    final pcs = order.items.fold<num>(0, (sum, i) => sum + i.qty);
+    return pcs > 0 ? '${pcs.toInt()} item' : '-';
+  }
+
+  Widget _buildNotFound() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.search_off_rounded, size: 56, color: _textHint),
+            const SizedBox(height: 12),
+            Text(
+              'Pesanan tidak ditemukan',
+              style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Pesanan ini tidak ada atau bukan milik akun yang sedang login.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(fontSize: 13, color: _textLight),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCancelledCard(OrderModel order) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: _white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _red.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: _red.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 94,
+            height: 94,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _redLight,
+              border: Border.all(color: _red.withValues(alpha: 0.25), width: 2),
+            ),
+            child: const Icon(Icons.cancel_rounded, color: _red, size: 48),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Pesanan Dibatalkan',
+            style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w800, color: _textDark),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Pesanan ini dibatalkan oleh outlet ${order.shopName}. '
+            'Hubungi outlet jika ada pertanyaan atau pesan ulang dari Beranda.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: _textLight, height: 1.5),
+          ),
+          const SizedBox(height: 16),
+          _buildStatusBadge('Dibatalkan', color: _red, background: _redLight, pulse: false),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.only(top: 20),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: _border)),
+            ),
+            child: Row(
+              children: [
+                _statItem('Berat', _weightText(order)),
+                _statItem('Total', _formatRupiah(order.totalPrice)),
+                _statItem('Dipesan', _formatTime(order.createdAt)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusCard(OrderModel order) {
+    final isFinished = order.status == 'done' || order.status == 'delivered';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -203,10 +356,10 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
       ),
       child: Column(
         children: [
-          _buildSpinningWasher(),
+          _buildSpinningWasher(isFinished: isFinished),
           const SizedBox(height: 16),
           Text(
-            'ESTIMASI WAKTU',
+            'TAHAP PROSES',
             style: GoogleFonts.plusJakartaSans(
               color: _textHint,
               fontSize: 11,
@@ -221,7 +374,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(
-                '14',
+                '${order.statusStep + 1}',
                 style: GoogleFonts.plusJakartaSans(
                   color: _textDark,
                   fontSize: 52,
@@ -231,7 +384,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
               ),
               const SizedBox(width: 6),
               Text(
-                'mnt',
+                '/ ${OrderModel.statusFlow.length}',
                 style: GoogleFonts.plusJakartaSans(
                   color: _textLight,
                   fontSize: 22,
@@ -241,7 +394,9 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
             ],
           ),
           const SizedBox(height: 8),
-          _buildStatusBadge(),
+          isFinished
+              ? _buildStatusBadge(order.statusLabel, color: _green, background: const Color(0xFFF0FDF4), pulse: false)
+              : _buildStatusBadge(order.statusLabel),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.only(top: 20),
@@ -250,9 +405,9 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
             ),
             child: Row(
               children: [
-                _statItem('Berat', '6.5 kg'),
-                _statItem('Suhu', '40°C'),
-                _statItem('Siklus', 'Normal'),
+                _statItem('Berat', _weightText(order)),
+                _statItem('Total', _formatRupiah(order.totalPrice)),
+                _statItem('Bayar', order.paymentMethod.isEmpty ? '-' : order.paymentMethod.toUpperCase()),
               ],
             ),
           ),
@@ -261,7 +416,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
     );
   }
 
-  Widget _buildSpinningWasher() {
+  Widget _buildSpinningWasher({bool isFinished = false}) {
     return AnimatedBuilder(
       animation: Listenable.merge([_spinController, _pulseAnimation]),
       builder: (context, child) {
@@ -326,9 +481,9 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.local_laundry_service_rounded,
-                color: _blue,
+              child: Icon(
+                isFinished ? Icons.check_circle_rounded : Icons.local_laundry_service_rounded,
+                color: isFinished ? _green : _blue,
                 size: 44,
               ),
             ),
@@ -338,13 +493,18 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
     );
   }
 
-  Widget _buildStatusBadge() {
+  Widget _buildStatusBadge(
+    String label, {
+    Color color = _blue,
+    Color background = _blueLight,
+    bool pulse = true,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: _blueLight,
+        color: background,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _blue.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -357,22 +517,23 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
               builder: (context, child) => Stack(
                 alignment: Alignment.center,
                 children: [
-                  Container(
-                    width: 10 * _pulseAnimation.value,
-                    height: 10 * _pulseAnimation.value,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _blue.withValues(
-                        alpha: 0.35 * (1 - _pulseAnimation.value),
+                  if (pulse)
+                    Container(
+                      width: 10 * _pulseAnimation.value,
+                      height: 10 * _pulseAnimation.value,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color.withValues(
+                          alpha: 0.35 * (1 - _pulseAnimation.value),
+                        ),
                       ),
                     ),
-                  ),
                   Container(
                     width: 7,
                     height: 7,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _blue,
+                      color: color,
                     ),
                   ),
                 ],
@@ -381,9 +542,9 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
           ),
           const SizedBox(width: 8),
           Text(
-            'Sedang Dicuci',
+            label,
             style: GoogleFonts.plusJakartaSans(
-              color: _blue,
+              color: color,
               fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
@@ -420,9 +581,9 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
   }
 
   // ══════════════════════════════════════════
-  //  DRIVER CARD
+  //  OUTLET CARD
   // ══════════════════════════════════════════
-  Widget _buildDriverCard() {
+  Widget _buildOutletCard(OrderModel order) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -439,44 +600,15 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
       ),
       child: Row(
         children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Image.network(
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuDNbFdVaqA_8R8o2B2bgNohvcDFNa6KRk0P-mMVAQ-g5m4Cl4t1f43n_V4b8c63c8gu7FaQqJH-G2yFe6luDuDMjF7AhoumW2U7Xm_J6v8edNmUTOO669GZ9mvFxfn0GjmAKIHDlTqQxfBmRRANyG6inXudEjrbjlta0Sd2fOXWHUUUAnjGvMibz4c_zFVgrcW89DqqIQawXnBeAIpTyEV6o1dpv4RMaWZwWqvD46qeedv2d-TIw_6IKh6ZEOOD7HgCKHRVYgSPvjg',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    width: 48,
-                    height: 48,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _blueLight,
-                    ),
-                    child: const Icon(
-                      Icons.person_rounded,
-                      color: _blue,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 13,
-                  height: 13,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF22C55E),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: _white, width: 2),
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _blueLight,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _blue.withValues(alpha: 0.2)),
+            ),
+            child: const Icon(Icons.storefront_rounded, color: _blue, size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -484,7 +616,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Budi Santoso',
+                  order.shopName.isEmpty ? 'Outlet Laundry' : order.shopName,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -495,16 +627,19 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                 Row(
                   children: [
                     const Icon(
-                      Icons.star_rounded,
+                      Icons.local_shipping_rounded,
                       color: Color(0xFFD97706),
                       size: 14,
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      '4.9 • Honda Beat B 1234 CD',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        color: _textLight,
+                    Expanded(
+                      child: Text(
+                        'Antar-jemput kurir • Dipesan ${_formatTime(order.createdAt)}',
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: _textLight,
+                        ),
                       ),
                     ),
                   ],
@@ -521,7 +656,17 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
               ],
             ),
             child: IconButton(
-              onPressed: () {},
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Chat dengan outlet akan segera hadir.',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12),
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
               icon: const Icon(
                 Icons.chat_bubble_rounded,
                 color: _white,
@@ -537,7 +682,36 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
   // ══════════════════════════════════════════
   //  LIVE PROGRESS CARD
   // ══════════════════════════════════════════
-  Widget _buildLiveProgressCard() {
+  /// Status tiap langkah timeline berdasarkan status pesanan saat ini
+  _StepStatus _stepStatus(OrderModel order, int stepIndex) {
+    final current = order.statusStep;
+    // 'delivered' adalah langkah terakhir: semua langkah dianggap selesai
+    if (order.status == 'delivered' || stepIndex < current) return _StepStatus.completed;
+    if (stepIndex == current) return _StepStatus.active;
+    return _StepStatus.pending;
+  }
+
+  String _stepSubtitle(_StepStatus status, String activeText) {
+    switch (status) {
+      case _StepStatus.completed:
+        return 'Selesai';
+      case _StepStatus.active:
+        return activeText;
+      case _StepStatus.pending:
+        return 'Menunggu';
+    }
+  }
+
+  Widget _buildLiveProgressCard(OrderModel order) {
+    final isFinished = order.status == 'delivered';
+    final steps = [
+      (Icons.receipt_long_rounded, 'Pesanan Diterima Outlet', 'Dibuat ${_formatTime(order.createdAt)} • menunggu diproses'),
+      (Icons.local_laundry_service_rounded, 'Sedang Dicuci', 'Cucian sedang dicuci di outlet'),
+      (Icons.iron_rounded, 'Pengeringan & Setrika', 'Cucian sedang dikeringkan & dirapikan'),
+      (Icons.inventory_2_rounded, 'Selesai Diproses', 'Cucian siap, menunggu diantar kurir'),
+      (Icons.local_shipping_rounded, 'Diantar ke Pelanggan', 'Kurir sedang mengantar cucianmu'),
+    ];
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -571,14 +745,14 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: _blueLight,
+                  color: isFinished ? const Color(0xFFF0FDF4) : _blueLight,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _blue.withValues(alpha: 0.3)),
+                  border: Border.all(color: (isFinished ? _green : _blue).withValues(alpha: 0.3)),
                 ),
                 child: Text(
-                  'Aktif',
+                  isFinished ? 'Selesai' : 'Aktif',
                   style: GoogleFonts.plusJakartaSans(
-                    color: _blue,
+                    color: isFinished ? _green : _blue,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
@@ -587,39 +761,15 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
             ],
           ),
           const SizedBox(height: 20),
-          _buildTimelineItem(
-            icon: Icons.check_circle_rounded,
-            title: 'Kurir Menuju Lokasi',
-            subtitle: '10:30 • Selesai',
-            status: _StepStatus.completed,
-            isFirst: true,
-          ),
-          _buildTimelineItem(
-            icon: Icons.scale_rounded,
-            title: 'Proses Penimbangan',
-            subtitle: '10:45 • 6.5kg Terverifikasi',
-            status: _StepStatus.completed,
-          ),
-          _buildTimelineItem(
-            icon: Icons.local_laundry_service_rounded,
-            title: 'Sedang Dicuci (65%)',
-            subtitle: 'Mesin #2 • Est. 14 mnt lagi',
-            status: _StepStatus.active,
-            progressValue: 0.65,
-          ),
-          _buildTimelineItem(
-            icon: Icons.iron_rounded,
-            title: 'Proses Setrika',
-            subtitle: 'Menunggu',
-            status: _StepStatus.pending,
-          ),
-          _buildTimelineItem(
-            icon: Icons.local_shipping_rounded,
-            title: 'Siap Diantar',
-            subtitle: 'Est. 14:00 WIB',
-            status: _StepStatus.pending,
-            isLast: true,
-          ),
+          for (var i = 0; i < steps.length; i++)
+            _buildTimelineItem(
+              icon: steps[i].$1,
+              title: steps[i].$2,
+              subtitle: _stepSubtitle(_stepStatus(order, i), steps[i].$3),
+              status: _stepStatus(order, i),
+              isFirst: i == 0,
+              isLast: i == steps.length - 1,
+            ),
         ],
       ),
     );

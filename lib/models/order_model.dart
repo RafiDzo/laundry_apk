@@ -1,6 +1,6 @@
 class OrderItem {
   final String name;
-  final int qty;
+  final num qty; // num agar berat desimal (mis. 3.5 kg) dari kasir bisa disimpan
   final int price;
   final String unit;
 
@@ -36,12 +36,35 @@ class OrderModel {
   final String shopId;
   final String shopName;
   final List<OrderItem> items;
-  final String status; // 'pending', 'washing', 'drying', 'done', 'delivered'
+  final String status; // 'pending', 'washing', 'drying', 'done', 'delivered', 'cancelled'
   final int totalPrice;
   final int serviceFee;
   final String? notes;
   final String paymentMethod;
   final DateTime createdAt;
+  final String? customerName;
+  final String? customerPhone;
+  final String deliveryType; // 'pickup' (dijemput kurir) atau 'dropoff' (antar sendiri)
+
+  /// Urutan tahapan proses, dipakai halaman pelacakan pelanggan
+  static const List<String> statusFlow = ['pending', 'washing', 'drying', 'done', 'delivered'];
+
+  static const Map<String, String> statusLabels = {
+    'pending': 'Menunggu Diproses',
+    'washing': 'Sedang Dicuci',
+    'drying': 'Pengeringan & Setrika',
+    'done': 'Selesai Diproses',
+    'delivered': 'Pesanan Selesai',
+    'cancelled': 'Dibatalkan',
+  };
+
+  bool get isDropoff => deliveryType == 'dropoff';
+  bool get isCancelled => status == 'cancelled';
+  bool get isActive => status != 'delivered' && status != 'cancelled';
+  String get statusLabel => statusLabels[status] ?? 'Menunggu Diproses';
+
+  /// Posisi status di [statusFlow] (0 = pending … 4 = delivered); -1 jika dibatalkan
+  int get statusStep => statusFlow.indexOf(status);
 
   OrderModel({
     required this.id,
@@ -55,6 +78,9 @@ class OrderModel {
     this.notes,
     required this.paymentMethod,
     required this.createdAt,
+    this.customerName,
+    this.customerPhone,
+    this.deliveryType = 'pickup',
   });
 
   factory OrderModel.fromMap(Map<String, dynamic> data, String id) {
@@ -76,14 +102,17 @@ class OrderModel {
       notes: data['notes'],
       paymentMethod: data['payment_method'] ?? '',
       createdAt: data['created_at'] != null
-          ? DateTime.parse(data['created_at'])
+          ? DateTime.parse(data['created_at']).toLocal()
           : DateTime.now(),
+      customerName: data['customer_name'],
+      customerPhone: data['customer_phone'],
+      deliveryType: data['delivery_type'] ?? 'pickup',
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'user_id': userId,
+      'user_id': userId.isEmpty ? null : userId,
       'shop_id': shopId,
       'shop_name': shopName,
       'items': items.map((e) => e.toMap()).toList(),
@@ -92,7 +121,11 @@ class OrderModel {
       'service_fee': serviceFee,
       'notes': notes,
       'payment_method': paymentMethod,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
+      if (customerName != null) 'customer_name': customerName,
+      if (customerPhone != null) 'customer_phone': customerPhone,
+      // 'pickup' sudah jadi default di database, jadi hanya dikirim untuk drop-off
+      if (isDropoff) 'delivery_type': deliveryType,
     };
   }
 }

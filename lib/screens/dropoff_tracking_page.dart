@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
+import '../models/order_model.dart';
+import '../models/shop_model.dart';
+import '../services/supabase_service.dart';
 import 'home_screen.dart';
 
 class DropoffTrackingPage extends StatefulWidget {
@@ -22,7 +27,6 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
 
   // ── Color Theme (Consistent with Washora Light Theme) ──
   static const Color _primaryBlue = Color(0xFF0077E6);
-  static const Color _blueLight = Color(0xFFEFF6FF);
   static const Color _surface = Color(0xFFF8FAFC);
   static const Color _bgCanvas = Color(0xFFEDF2F7);
   static const Color _textDark = Color(0xFF0F172A);
@@ -31,10 +35,45 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
   static const Color _textHint = Color(0xFF94A3B8);
   static const Color _border = Color(0xFFE2E8F0);
   static const Color _successGreen = Color(0xFF16A34A);
+  static const Color _dangerRed = Color(0xFFDC2626);
+
+  // Data pesanan realtime + data outlet tujuan dari Supabase
+  final SupabaseService _supabaseService = SupabaseService();
+  OrderModel? _order;
+  ShopModel? _shop;
+  bool _isLoading = true;
+  StreamSubscription<OrderModel?>? _orderSub;
+  Timer? _reconnectTimer;
+
+  void _subscribeOrder() {
+    _orderSub?.cancel();
+    _orderSub = _supabaseService.watchOrder(widget.orderId).listen(
+      (order) {
+        if (!mounted) return;
+        final needsShop = _shop == null && order != null && order.shopId.isNotEmpty;
+        setState(() {
+          _order = order;
+          _isLoading = false;
+        });
+        if (needsShop) _loadShop(order.shopId);
+      },
+      onError: (e) {
+        print('Error watchOrder: $e');
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        // Koneksi realtime terputus: sambung ulang otomatis
+        _reconnectTimer?.cancel();
+        _reconnectTimer = Timer(const Duration(seconds: 5), () {
+          if (mounted) _subscribeOrder();
+        });
+      },
+    );
+  }
 
   @override
   void initState() {
     super.initState();
+    _subscribeOrder();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
@@ -53,9 +92,33 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
 
   @override
   void dispose() {
+    _reconnectTimer?.cancel();
+    _orderSub?.cancel();
     _pulseController.dispose();
     _entranceController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadShop(String shopId) async {
+    final shop = await _supabaseService.getShopById(shopId);
+    if (mounted && shop != null) setState(() => _shop = shop);
+  }
+
+  /// Langkah timeline drop-off yang sedang aktif (0-3); 4 = semua selesai.
+  /// Outlet tidak punya status "diterima kasir" terpisah, jadi begitu mitra
+  /// mulai mencuci, langkah 1 & 2 dianggap selesai.
+  int get _dropoffStep {
+    switch (_order?.status) {
+      case 'washing':
+      case 'drying':
+        return 2;
+      case 'done':
+        return 3;
+      case 'delivered':
+        return 4;
+      default:
+        return 0;
+    }
   }
 
   String get _cleanCode {
@@ -135,25 +198,36 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
               children: [
                 _buildHeader(),
                 Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _staggered(index: 0, child: _buildDropoffTicketCard()),
-                        const SizedBox(height: 16),
-                        _staggered(index: 1, child: _buildStatusCard()),
-                        const SizedBox(height: 16),
-                        _staggered(index: 2, child: _buildOutletCard()),
-                        const SizedBox(height: 16),
-                        _staggered(index: 3, child: _buildTimelineCard()),
-                        const SizedBox(height: 16),
-                        _staggered(index: 4, child: _buildGuidanceCard()),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: _primaryBlue))
+                      : _order == null
+                          ? _buildNotFound()
+                          : SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Tiket & panduan hanya relevan selama cucian belum diserahkan
+                                  if (!_order!.isCancelled && _dropoffStep == 0) ...[
+                                    _staggered(index: 0, child: _buildDropoffTicketCard()),
+                                    const SizedBox(height: 16),
+                                  ],
+                                  _staggered(index: 1, child: _buildStatusCard()),
+                                  const SizedBox(height: 16),
+                                  _staggered(index: 2, child: _buildOutletCard()),
+                                  if (!_order!.isCancelled) ...[
+                                    const SizedBox(height: 16),
+                                    _staggered(index: 3, child: _buildTimelineCard()),
+                                  ],
+                                  if (!_order!.isCancelled && _dropoffStep == 0) ...[
+                                    const SizedBox(height: 16),
+                                    _staggered(index: 4, child: _buildGuidanceCard()),
+                                  ],
+                                  const SizedBox(height: 24),
+                                ],
+                              ),
+                            ),
                 ),
                 _buildBottomActions(),
               ],
@@ -432,7 +506,84 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
   // ═══════════════════════════════════════════════
   //  3. STATUS OVERVIEW CARD
   // ═══════════════════════════════════════════════
+  String _formatRupiah(int amount) =>
+      'Rp ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+
+  Widget _buildNotFound() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.search_off_rounded, size: 56, color: _textHint),
+            const SizedBox(height: 12),
+            Text(
+              'Pesanan tidak ditemukan',
+              style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700, color: _textDark),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Pesanan ini tidak ada atau bukan milik akun yang sedang login.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(fontSize: 13, color: _textLight),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// (warna aksen, label kecil, judul, keterangan, ikon) sesuai status pesanan
+  (Color, String, String, String, IconData) get _statusInfo {
+    final order = _order!;
+    if (order.isCancelled) {
+      return (
+        _dangerRed,
+        'Dibatalkan',
+        'Pesanan Dibatalkan',
+        'Dibatalkan oleh outlet. Hubungi outlet jika ada pertanyaan.',
+        Icons.cancel_rounded,
+      );
+    }
+    switch (_dropoffStep) {
+      case 2:
+        return (
+          _primaryBlue,
+          'Sedang Diproses',
+          order.status == 'drying' ? 'Pengeringan & Setrika' : 'Cucian Sedang Dicuci',
+          'Outlet sedang mengerjakan cucian Anda',
+          Icons.local_laundry_service_rounded,
+        );
+      case 3:
+        return (
+          _successGreen,
+          'Siap Diambil',
+          'Cucian Siap Diambil',
+          'Ambil di outlet sesuai jam operasional',
+          Icons.inventory_2_rounded,
+        );
+      case 4:
+        return (
+          _successGreen,
+          'Selesai',
+          'Pesanan Selesai',
+          'Cucian sudah diambil. Terima kasih!',
+          Icons.check_circle_rounded,
+        );
+      default:
+        return (
+          const Color(0xFFD97706),
+          'Menunggu Drop-off',
+          'Silakan Antar ke Outlet',
+          'Bawa pakaian Anda sebelum jam tutup outlet',
+          Icons.storefront_rounded,
+        );
+    }
+  }
+
   Widget _buildStatusCard() {
+    final (accent, label, title, subtitle, icon) = _statusInfo;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -460,22 +611,22 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
                     height: 56,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _blueLight,
+                      color: accent.withValues(alpha: 0.08),
                       border: Border.all(
-                        color: _primaryBlue.withValues(alpha: 0.3 * _pulseAnimation.value),
+                        color: accent.withValues(alpha: 0.3 * _pulseAnimation.value),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: _primaryBlue.withValues(alpha: 0.15 * _pulseAnimation.value),
+                          color: accent.withValues(alpha: 0.15 * _pulseAnimation.value),
                           blurRadius: 14,
                           spreadRadius: 2,
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.storefront_rounded,
-                      color: _primaryBlue,
+                    child: Icon(
+                      icon,
+                      color: accent,
                       size: 28,
                     ),
                   );
@@ -491,25 +642,25 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Color(0xFFF59E0B),
+                            color: accent,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Menunggu Drop-off',
+                          label,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFFD97706),
+                            color: accent,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'Silakan Antar ke Outlet',
+                      title,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -517,7 +668,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
                       ),
                     ),
                     Text(
-                      'Bawa pakaian Anda sebelum jam tutup outlet',
+                      subtitle,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         color: _textLight,
@@ -540,7 +691,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
               _buildDivider(),
               _buildStatItem('Biaya Antar', 'Bebas Biaya', Icons.savings_rounded),
               _buildDivider(),
-              _buildStatItem('Estimasi', '24 Jam', Icons.access_time_rounded),
+              _buildStatItem('Total', _formatRupiah(_order!.totalPrice), Icons.receipt_long_rounded),
             ],
           ),
         ],
@@ -589,6 +740,10 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
   //  4. OUTLET INFORMATION CARD
   // ═══════════════════════════════════════════════
   Widget _buildOutletCard() {
+    final shopName = _shop?.name ?? (_order!.shopName.isEmpty ? 'Outlet Laundry' : _order!.shopName);
+    final address = _shop?.address ?? '';
+    final openHours = _shop?.openHours ?? '';
+    final rating = _shop?.rating ?? 0;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -666,46 +821,52 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Washora CleanPro Kemang',
+                      shopName,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: _textDark,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        const Icon(Icons.star_rounded, size: 14, color: Color(0xFFF59E0B)),
-                        const SizedBox(width: 3),
-                        Text(
-                          '4.9 (1.2k+ ulasan) • 1.2 km dari Anda',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _textLight,
+                    if (rating > 0) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.star_rounded, size: 14, color: Color(0xFFF59E0B)),
+                          const SizedBox(width: 3),
+                          Text(
+                            rating.toStringAsFixed(1),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: _textLight,
+                            ),
                           ),
+                        ],
+                      ),
+                    ],
+                    if (address.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        address,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: _textMid,
+                          height: 1.35,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Jl. Kemang Raya No. 12A, Mampang Prapatan, Jakarta Selatan',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        color: _textMid,
-                        height: 1.35,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Jam Layanan Kasir: 08:00 - 21:00 WIB',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: _primaryBlue,
+                    ],
+                    if (openHours.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Jam Layanan Kasir: $openHours',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _primaryBlue,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -723,7 +884,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Membuka navigasi Google Maps menuju Washora CleanPro Kemang...',
+                          'Membuka navigasi Google Maps menuju $shopName...',
                           style: GoogleFonts.plusJakartaSans(fontSize: 12),
                         ),
                         behavior: SnackBarBehavior.floating,
@@ -754,7 +915,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Menghubungi kasir outlet di 0812-3456-7890 via WhatsApp...',
+                          'Menghubungi kasir $shopName...',
                           style: GoogleFonts.plusJakartaSans(fontSize: 12),
                         ),
                         behavior: SnackBarBehavior.floating,
@@ -789,6 +950,19 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
   //  5. TIMELINE STATUS DROPOFF
   // ═══════════════════════════════════════════════
   Widget _buildTimelineCard() {
+    final current = _dropoffStep;
+    const steps = [
+      ('Siap Diantar ke Outlet', 'Bawa pakaian kotor ke outlet dan tunjukkan tiket ini ke kasir.'),
+      ('Diterima Kasir & Ditimbang', 'Kasir memeriksa pakaian dan mencocokkan berat cucian Anda.'),
+      ('Proses Pencucian & Setrika', 'Cucian diproses secara higienis menggunakan deterjen & pewangi premium.'),
+      ('Selesai & Siap Diambil di Outlet', 'Cucian wangi & rapi siap diambil kembali di outlet.'),
+    ];
+    String timeLabel(int i) {
+      if (i < current) return 'Selesai';
+      if (i == current) return 'Sekarang';
+      return 'Menunggu';
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -818,53 +992,27 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
                 ),
               ),
               Text(
-                'Langkah 1 dari 4',
+                current >= steps.length ? 'Semua Selesai' : 'Langkah ${current + 1} dari ${steps.length}',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: _primaryBlue,
+                  color: current >= steps.length ? _successGreen : _primaryBlue,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 18),
 
-          _buildStep(
-            stepNumber: 1,
-            title: 'Siap Diantar ke Outlet',
-            subtitle: 'Bawa pakaian kotor ke outlet dan tunjukkan tiket ini ke kasir.',
-            time: 'Sekarang',
-            isActive: true,
-            isCompleted: false,
-            isLast: false,
-          ),
-          _buildStep(
-            stepNumber: 2,
-            title: 'Diterima Kasir & Ditimbang',
-            subtitle: 'Kasir memeriksa pakaian dan mencocokkan berat cucian Anda.',
-            time: 'Menunggu',
-            isActive: false,
-            isCompleted: false,
-            isLast: false,
-          ),
-          _buildStep(
-            stepNumber: 3,
-            title: 'Proses Pencucian & Setrika',
-            subtitle: 'Cucian diproses secara higienis menggunakan deterjen & pewangi premium.',
-            time: 'Menunggu',
-            isActive: false,
-            isCompleted: false,
-            isLast: false,
-          ),
-          _buildStep(
-            stepNumber: 4,
-            title: 'Selesai & Siap Diambil di Outlet',
-            subtitle: 'Notifikasi akan dikirim saat cucian wangi & rapi siap diambil kembali.',
-            time: 'Estimasi Besok',
-            isActive: false,
-            isCompleted: false,
-            isLast: true,
-          ),
+          for (var i = 0; i < steps.length; i++)
+            _buildStep(
+              stepNumber: i + 1,
+              title: steps[i].$1,
+              subtitle: steps[i].$2,
+              time: timeLabel(i),
+              isActive: i == current,
+              isCompleted: i < current,
+              isLast: i == steps.length - 1,
+            ),
         ],
       ),
     );

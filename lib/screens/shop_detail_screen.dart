@@ -21,15 +21,12 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
 
   late AnimationController _selectionPulseController;
 
-  final List<String> _categories = [
-    'Semua',
-    'Kiloan',
-    'Satuan',
-    'Rumah',
-    'Sepatu & Tas',
-  ];
+  // Diisi di initState: dari layanan outlet di database, atau katalog default
+  late final List<Map<String, dynamic>> _allServices;
+  late final List<String> _categories;
 
-  final List<Map<String, dynamic>> _allServices = [
+  // Katalog cadangan untuk outlet yang belum punya daftar layanan
+  static final List<Map<String, dynamic>> _defaultServices = [
     {
       'id': 'srv_1',
       'name': 'Cuci Komplit (Wash & Fold)',
@@ -143,6 +140,11 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
   @override
   void initState() {
     super.initState();
+    _allServices = _buildServicesForShop();
+    _categories = [
+      'Semua',
+      ..._allServices.map((s) => s['category'] as String).toSet(),
+    ];
     _selectionPulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -153,6 +155,63 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
   void dispose() {
     _selectionPulseController.dispose();
     super.dispose();
+  }
+
+  static String _formatRupiah(int amount) =>
+      'Rp ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+
+  static IconData _iconFromName(String name) {
+    switch (name) {
+      case 'bolt':
+        return Icons.bolt_rounded;
+      case 'iron':
+        return Icons.iron_rounded;
+      case 'dry_cleaning':
+        return Icons.dry_cleaning_rounded;
+      case 'checkroom':
+        return Icons.checkroom_rounded;
+      case 'bed':
+        return Icons.bed_rounded;
+      case 'dry':
+        return Icons.dry_rounded;
+      default:
+        return Icons.local_laundry_service_rounded;
+    }
+  }
+
+  /// Layanan yang dijual outlet ini (kolom `services` di tabel shops).
+  /// Jika outlet belum punya daftar layanan, pakai katalog default dengan
+  /// harga cuci kiloan disesuaikan ke harga per kg outlet.
+  List<Map<String, dynamic>> _buildServicesForShop() {
+    final raw = widget.laundry['services'];
+    if (raw is List && raw.isNotEmpty) {
+      return raw.whereType<Map>().map((s) {
+        final price = (s['price'] as num?)?.toInt() ?? 0;
+        final unit = (s['unit'] as String?)?.isNotEmpty == true ? s['unit'] as String : '/ kg';
+        return <String, dynamic>{
+          'id': s['id'] ?? '',
+          'name': s['name'] ?? 'Layanan',
+          'desc': s['description'] ?? '',
+          'price': _formatRupiah(price),
+          'priceRaw': price,
+          'unit': unit,
+          'category': unit.contains('kg') ? 'Kiloan' : 'Satuan',
+          'duration': unit.contains('kg') ? '1-2 Hari' : '2 Hari',
+          'icon': _iconFromName(s['iconName'] as String? ?? ''),
+          'badge': null,
+        };
+      }).toList();
+    }
+
+    final pricePerKg = (widget.laundry['pricePerKg'] as num?)?.toInt() ?? 0;
+    return _defaultServices.asMap().entries.map((e) {
+      final s = Map<String, dynamic>.from(e.value);
+      if (e.key == 0 && pricePerKg > 0) {
+        s['priceRaw'] = pricePerKg;
+        s['price'] = _formatRupiah(pricePerKg);
+      }
+      return s;
+    }).toList();
   }
 
   List<Map<String, dynamic>> get _filteredServices {

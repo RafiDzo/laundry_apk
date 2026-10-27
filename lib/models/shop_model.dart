@@ -11,6 +11,7 @@ class ShopModel {
   final String imageUrl;
   final int pricePerKg;
   final List<ServiceModel> services; // In Firestore, this could be a subcollection or nested map
+  final String? ownerId;
 
   ShopModel({
     required this.id,
@@ -23,6 +24,7 @@ class ShopModel {
     required this.imageUrl,
     required this.pricePerKg,
     this.services = const [],
+    this.ownerId,
   });
 
   factory ShopModel.fromMap(Map<String, dynamic> data, String id) {
@@ -43,6 +45,7 @@ class ShopModel {
       imageUrl: data['image_url'] ?? data['imageUrl'] ?? '',
       pricePerKg: data['price_per_kg'] ?? data['pricePerKg'] ?? 0,
       services: servicesList,
+      ownerId: data['owner_id'],
     );
   }
 

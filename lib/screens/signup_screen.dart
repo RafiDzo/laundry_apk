@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../widgets/email_confirmation_dialog.dart';
 
 class SignUpScreen extends StatefulWidget {
   final String role;
@@ -93,7 +94,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      await _authService.signUp(
+      final needsConfirmation = await _authService.signUp(
         name: name,
         email: email,
         password: password,
@@ -101,6 +102,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
 
       if (!mounted) return;
+
+      if (needsConfirmation) {
+        // Supabase mewajibkan konfirmasi email — beri tahu sebelum kembali ke login
+        await showEmailConfirmationDialog(context, email: email, justSignedUp: true);
+        if (mounted) Navigator.pop(context);
+        return;
+      }
 
       // Sign up successful — show message and navigate back to login
       ScaffoldMessenger.of(context).showSnackBar(

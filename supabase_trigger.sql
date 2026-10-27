@@ -17,7 +17,7 @@ BEGIN
   ON CONFLICT (id) DO NOTHING; -- Hindari duplicate jika sudah ada
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Trigger: jalankan function setiap ada user baru di auth.users
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;

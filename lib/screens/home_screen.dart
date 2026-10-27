@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
+import '../models/notification_model.dart';
 import '../models/shop_model.dart';
 import '../services/seed_data.dart';
 import 'shop_detail_screen.dart';
-import 'order_tracking_page.dart';
+import 'notifications_screen.dart';
+import 'order_history_screen.dart';
 import 'profile_screen.dart';
-import 'order_flow_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -68,6 +69,13 @@ class _HomeScreenState extends State<HomeScreen>
 
   final SupabaseService _supabaseService = SupabaseService();
   final AuthService _authService = AuthService();
+
+  // Notifikasi status pesanan (lonceng) — realtime dari tabel notifications
+  StreamSubscription<List<NotificationModel>>? _notifSub;
+  Timer? _notifReconnectTimer;
+  int _unreadNotifs = 0;
+  Set<String>? _seenNotifIds; // null sampai data pertama diterima
+
   List<ShopModel> _shops = [];
   bool _isLoadingShops = true;
 
@@ -125,6 +133,86 @@ class _HomeScreenState extends State<HomeScreen>
     _entranceController.forward();
     _startPromoAutoScroll();
     _loadData();
+    _subscribeNotifications();
+  }
+
+  void _subscribeNotifications() {
+    final userId = _authService.currentUser?.id;
+    if (userId == null) return;
+
+    _notifSub?.cancel();
+    _notifSub = _supabaseService.getUserNotifications(userId).listen(
+      (notifs) {
+        if (!mounted) return;
+        // Tampilkan pesan singkat untuk notifikasi baru yang masuk saat layar ini terbuka
+        final seen = _seenNotifIds;
+        if (seen != null) {
+          final fresh = notifs.where((n) => !n.isRead && !seen.contains(n.id)).toList();
+          if (fresh.isNotEmpty) _showNotificationToast(fresh.first);
+        }
+        setState(() {
+          _seenNotifIds = notifs.map((n) => n.id).toSet();
+          _unreadNotifs = notifs.where((n) => !n.isRead).length;
+        });
+      },
+      onError: (e) {
+        print('Error stream notifikasi: $e');
+        // Koneksi realtime terputus: sambung ulang otomatis
+        _notifReconnectTimer?.cancel();
+        _notifReconnectTimer = Timer(const Duration(seconds: 5), () {
+          if (mounted) _subscribeNotifications();
+        });
+      },
+    );
+  }
+
+  void _showNotificationToast(NotificationModel notif) {
+    final (icon, color) = notificationStyle(notif.status);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    notif.title,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    notif.body,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        action: SnackBarAction(
+          label: 'Lihat',
+          textColor: Colors.white,
+          onPressed: _openNotifications,
+        ),
+      ),
+    );
+  }
+
+  void _openNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+    );
   }
 
   void _loadData() async {
@@ -149,6 +237,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _notifReconnectTimer?.cancel();
+    _notifSub?.cancel();
     _promoTimer?.cancel();
     _promoPageController.dispose();
     _entranceController.dispose();
@@ -411,23 +501,10 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           // Notification Bell
           InkWell(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Tidak ada pemberitahuan baru saat ini.',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 13),
-                  ),
-                  backgroundColor: const Color(0xFF0077E6),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            },
+            onTap: _openNotifications,
             borderRadius: BorderRadius.circular(14),
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
                 Container(
                   width: 44,
@@ -448,25 +525,37 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.notifications_outlined,
-                    color: Color(0xFF334155),
+                  child: Icon(
+                    _unreadNotifs > 0 ? Icons.notifications_active_rounded : Icons.notifications_outlined,
+                    color: _unreadNotifs > 0 ? const Color(0xFF0077E6) : const Color(0xFF334155),
                     size: 22,
                   ),
                 ),
-                Positioned(
-                  top: 9,
-                  right: 9,
-                  child: Container(
-                    width: 9,
-                    height: 9,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                // Badge jumlah notifikasi belum dibaca
+                if (_unreadNotifs > 0)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _unreadNotifs > 9 ? '9+' : '$_unreadNotifs',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          height: 1,
+                        ),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -1023,6 +1112,160 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  /// Buka detail outlet. ID outlet ikut dibawa sampai pesanan dibuat,
+  /// sehingga pesanan masuk ke dashboard mitra pemilik outlet tersebut.
+  Future<void> _openShopDetail(ShopModel shop) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ShopDetailScreen(
+          laundry: {
+            'id': shop.id,
+            'name': shop.name,
+            'address': shop.address,
+            'rating': shop.rating,
+            'distance': shop.distance,
+            'imageUrl': shop.imageUrl,
+            'queueText': shop.queueText,
+            'openHours': shop.openHours,
+            'pricePerKg': shop.pricePerKg,
+            'services': shop.services.map((s) => s.toMap()).toList(),
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Tombol "Pesanan" di navigasi bawah: pilih outlet dulu, lalu ke detail outlet
+  Future<void> _showOutletPicker() async {
+    final shops = _shops.where((s) => !s.id.startsWith('dummy-')).toList();
+    if (shops.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isLoadingShops
+                ? 'Daftar outlet masih dimuat, coba sebentar lagi.'
+                : 'Belum ada outlet yang bisa dipesan saat ini.',
+            style: GoogleFonts.plusJakartaSans(fontSize: 13),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final picked = await showModalBottomSheet<ShopModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.75),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                child: Text(
+                  'Pilih Outlet Laundry',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Text(
+                  'Pesananmu akan langsung diterima oleh outlet yang dipilih.',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF64748B)),
+                ),
+              ),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: shops.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) {
+                    final shop = shops[i];
+                    return InkWell(
+                      onTap: () => Navigator.pop(ctx, shop),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.local_laundry_service_rounded, color: Color(0xFF0077E6)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    shop.name,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  Text(
+                                    shop.address.isNotEmpty ? shop.address : shop.openHours,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0xFF64748B)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (picked != null && mounted) await _openShopDetail(picked);
+  }
+
   // ═══════════════════════════════════════════════
   //  8. LAUNDRY LIST ITEMS (WHITE CARDS)
   // ═══════════════════════════════════════════════
@@ -1073,26 +1316,7 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
           child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ShopDetailScreen(
-                    laundry: {
-                      'id': shop.id,
-                      'name': shop.name,
-                      'address': shop.address,
-                      'rating': shop.rating,
-                      'distance': shop.distance,
-                      'imageUrl': shop.imageUrl,
-                      'queueText': shop.queueText,
-                      'openHours': shop.openHours,
-                      'pricePerKg': shop.pricePerKg,
-                    },
-                  ),
-                ),
-              );
-            },
+            onTap: () => _openShopDetail(shop),
             borderRadius: BorderRadius.circular(18),
             child: Padding(
               padding: const EdgeInsets.all(14),
@@ -1376,22 +1600,20 @@ class _HomeScreenState extends State<HomeScreen>
             if (mounted) setState(() => _selectedNavIndex = 0);
           });
         } else if (index == 2) {
-          // Navigate to Track
+          // Lacak pesanan aktif milik user
+          openActiveOrderTracking(context).then((_) {
+            if (mounted) setState(() => _selectedNavIndex = 0);
+          });
+        } else if (index == 3) {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  const OrderTrackingPage(orderId: 'TRK-98421'),
-            ),
+            MaterialPageRoute(builder: (context) => const OrderHistoryScreen()),
           ).then((_) {
             if (mounted) setState(() => _selectedNavIndex = 0);
           });
         } else if (index == 1) {
-          // Navigate to Order Flow (two-step)
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const OrderFlowScreen()),
-          ).then((_) {
+          // Pilih outlet dulu agar pesanan masuk ke mitra yang tepat
+          _showOutletPicker().then((_) {
             if (mounted) setState(() => _selectedNavIndex = 0);
           });
         } else {

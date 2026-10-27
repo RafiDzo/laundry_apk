@@ -7,7 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import '../models/user_model.dart';
-import 'order_tracking_page.dart';
+import 'order_history_screen.dart';
 import 'role_selection_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -948,11 +948,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (index == 0) {
           Navigator.pop(context);
         } else if (index == 2) {
+          openActiveOrderTracking(context);
+        } else if (index == 3) {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const OrderTrackingPage(orderId: 'TRK-98421'),
-            ),
+            MaterialPageRoute(builder: (context) => const OrderHistoryScreen()),
           );
         }
       },

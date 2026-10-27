@@ -3,6 +3,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_config.dart';
 import 'supabase_service.dart';
 
+/// Dilempar oleh [AuthService.signIn] saat akun belum mengonfirmasi email,
+/// supaya UI bisa menawarkan kirim ulang email konfirmasi.
+class EmailNotConfirmedException implements Exception {
+  final String email;
+  EmailNotConfirmedException(this.email);
+
+  @override
+  String toString() => 'Email belum dikonfirmasi. Cek inbox email kamu.';
+}
+
 class AuthService {
   final SupabaseClient _auth = Supabase.instance.client;
   final SupabaseService _supabaseService = SupabaseService();
@@ -15,8 +25,9 @@ class AuthService {
 
   // ================= EMAIL / PASSWORD =================
 
-  /// Sign up dengan email dan password
-  Future<void> signUp({
+  /// Sign up dengan email dan password.
+  /// Mengembalikan true jika akun masih perlu konfirmasi email sebelum bisa login.
+  Future<bool> signUp({
     required String name,
     required String email,
     required String password,
@@ -46,6 +57,8 @@ class AuthService {
           print('createUser notice: $e');
         }
       }
+      // Session null = Supabase menunggu konfirmasi email
+      return response.session == null;
     } on AuthException catch (e) {
       throw _getCustomErrorMessage(e.message);
     } catch (e) {
@@ -105,10 +118,35 @@ class AuthService {
         }
       }
     } on AuthException catch (e) {
+      print('signIn AuthException: ${e.statusCode} ${e.message}');
+      final msg = e.message.toLowerCase();
+      if (e.code == 'email_not_confirmed' || msg.contains('email not confirmed')) {
+        throw EmailNotConfirmedException(email);
+      }
+      throw _getCustomErrorMessage(e.message);
+    } catch (e) {
+      if (e is String || e is EmailNotConfirmedException) rethrow;
+      print('signIn error: $e');
+      throw 'Terjadi kesalahan sistem: $e';
+    }
+  }
+
+  /// Kirim ulang email konfirmasi pendaftaran
+  Future<void> resendConfirmationEmail(String email) async {
+    try {
+      await _auth.auth.resend(type: OtpType.signup, email: email);
+    } on AuthException catch (e) {
+      print('resendConfirmationEmail: ${e.statusCode} ${e.message}');
+      final msg = e.message.toLowerCase();
+      if (e.statusCode == '429' ||
+          msg.contains('rate limit') ||
+          msg.contains('security purposes')) {
+        throw 'Terlalu sering mengirim email. Tunggu sekitar 1 menit lalu coba lagi.';
+      }
       throw _getCustomErrorMessage(e.message);
     } catch (e) {
       if (e is String) rethrow;
-      throw 'Terjadi kesalahan sistem.';
+      throw 'Gagal mengirim ulang email: $e';
     }
   }
 
