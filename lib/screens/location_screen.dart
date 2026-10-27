@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'home_screen.dart';
+import '../services/address_service.dart';
 
 class LocationScreen extends StatefulWidget {
   const LocationScreen({super.key});
@@ -643,11 +644,28 @@ class _LocationScreenState extends State<LocationScreen> with TickerProviderStat
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => const HomeScreen()),
+                            onTap: () async {
+                              final label = _selectedCity ?? 'Lokasi Terpilih';
+                              final address = _searchController.text.trim().isNotEmpty
+                                  ? _searchController.text.trim()
+                                  : _selectedCity != null
+                                      ? 'Area $_selectedCity, Indonesia'
+                                      : 'Jl. Merdeka No. 12, Menteng, Jakarta Pusat';
+                              await AddressService.setFromRawAddress(
+                                label: label,
+                                address: address,
+                                note: 'Ditentukan melalui peta',
                               );
+                              if (context.mounted) {
+                                if (Navigator.canPop(context)) {
+                                  Navigator.pop(context, true);
+                                } else {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const HomeScreen()),
+                                  );
+                                }
+                              }
                             },
                             borderRadius: BorderRadius.circular(16),
                             child: Padding(
@@ -658,7 +676,7 @@ class _LocationScreenState extends State<LocationScreen> with TickerProviderStat
                                   const Icon(Icons.near_me, color: Colors.white, size: 20),
                                   const SizedBox(width: 12),
                                   Text(
-                                    'IZINKAN AKSES LOKASI',
+                                    'GUNAKAN LOKASI INI',
                                     style: GoogleFonts.plusJakartaSans(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -684,47 +702,60 @@ class _LocationScreenState extends State<LocationScreen> with TickerProviderStat
   }
 
   Widget _buildRecentLocationTile(String title, String subtitle) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF1F5F9)), // slate-100
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9), // slate-100
-              borderRadius: BorderRadius.circular(8),
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _searchController.text = '$title, $subtitle';
+          _selectedCity = title;
+        });
+        _searchLocation('$title, $subtitle');
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFF1F5F9)), // slate-100
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9), // slate-100
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.history, color: Color(0xFF94A3B8), size: 18),
             ),
-            child: const Icon(Icons.history, color: Color(0xFF94A3B8), size: 18),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: const Color(0xFF1E293B), // slate-800
-                ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: const Color(0xFF1E293B), // slate-800
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.normal,
+                      fontSize: 11,
+                      color: const Color(0xFF64748B), // slate-500
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.normal,
-                  fontSize: 11,
-                  color: const Color(0xFF64748B), // slate-500
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Color(0xFFCBD5E1)),
+          ],
+        ),
       ),
     );
   }

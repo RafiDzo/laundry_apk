@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'order_tracking_page.dart';
+import 'order_flow_screen.dart';
+import 'home_screen.dart';
+import 'profile_screen.dart';
+import '../services/address_service.dart';
 
 // ─────────────────────────────────────────────
 //  DATA MODEL LOKAL (Demo / Dummy Data)
@@ -63,7 +67,10 @@ class _HistoryScreenState extends State<HistoryScreen>
   // ──────────────────────────
   int _selectedTab = 0; // 0=Semua, 1=Aktif, 2=Selesai, 3=Dibatalkan
   final _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
+  String _sortBy = 'terbaru'; // 'terbaru', 'terlama', 'tertinggi', 'terendah'
+  String _selectedServiceFilter = 'Semua';
   late final AnimationController _entranceController;
 
   final List<String> _tabs = ['Semua', 'Aktif 🔵', 'Selesai ✅', 'Dibatalkan ❌'];
@@ -164,6 +171,7 @@ class _HistoryScreenState extends State<HistoryScreen>
   @override
   void initState() {
     super.initState();
+    AddressService.init();
     _entranceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -178,11 +186,37 @@ class _HistoryScreenState extends State<HistoryScreen>
   void dispose() {
     _entranceController.dispose();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
+  Future<void> _onRefresh() async {
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Riwayat transaksi berhasil diperbarui',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: _blue,
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+  }
+
   // ──────────────────────────
-  //  Filtering
+  //  Filtering & Sorting Algorithm
   // ──────────────────────────
   List<_OrderHistory> get _filteredOrders {
     var list = _orders.where((o) {
@@ -198,16 +232,40 @@ class _HistoryScreenState extends State<HistoryScreen>
       return true;
     }).toList();
 
+    if (_selectedServiceFilter != 'Semua') {
+      list = list
+          .where(
+            (o) => o.serviceType.toLowerCase().contains(
+                  _selectedServiceFilter.toLowerCase(),
+                ),
+          )
+          .toList();
+    }
+
     if (_searchQuery.isNotEmpty) {
       list = list
           .where(
             (o) =>
                 o.shopName.toLowerCase().contains(_searchQuery) ||
                 o.id.toLowerCase().contains(_searchQuery) ||
-                o.serviceType.toLowerCase().contains(_searchQuery),
+                o.serviceType.toLowerCase().contains(_searchQuery) ||
+                (o.notes?.toLowerCase().contains(_searchQuery) ?? false) ||
+                o.paymentMethod.toLowerCase().contains(_searchQuery),
           )
           .toList();
     }
+
+    // Sort
+    if (_sortBy == 'terbaru') {
+      list.sort((a, b) => b.date.compareTo(a.date));
+    } else if (_sortBy == 'terlama') {
+      list.sort((a, b) => a.date.compareTo(b.date));
+    } else if (_sortBy == 'tertinggi') {
+      list.sort((a, b) => b.totalPrice.compareTo(a.totalPrice));
+    } else if (_sortBy == 'terendah') {
+      list.sort((a, b) => a.totalPrice.compareTo(b.totalPrice));
+    }
+
     return list;
   }
 
@@ -222,13 +280,25 @@ class _HistoryScreenState extends State<HistoryScreen>
             o.status == OrderStatus.drying,
       )
       .length;
+
   int get _totalSpend => _orders
       .where((o) => o.status != OrderStatus.cancelled)
       .fold(0, (s, o) => s + o.totalPrice);
 
   // ──────────────────────────
-  //  Navigation
+  //  Navigation Helper
   // ──────────────────────────
+  void _navigateToHome() {
+    if (Navigator.canPop(context)) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
+  }
+
   void _openOrderDetail(_OrderHistory order) {
     Navigator.push(
       context,
@@ -318,57 +388,65 @@ class _HistoryScreenState extends State<HistoryScreen>
                   child: Column(
                     children: [
                       _buildHeader(),
+                      _buildLocationStrip(),
                       Expanded(
-                        child: CustomScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          slivers: [
-                            SliverToBoxAdapter(
-                              child: Column(
-                                children: [
-                                  const SizedBox(height: 8),
-                                  _staggered(
-                                    index: 0,
-                                    child: _buildSummaryRow(),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _staggered(
-                                    index: 1,
-                                    child: _buildSearchBar(),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  _staggered(index: 2, child: _buildTabRow()),
-                                  const SizedBox(height: 4),
-                                ],
-                              ),
+                        child: RefreshIndicator(
+                          onRefresh: _onRefresh,
+                          color: _blue,
+                          child: CustomScrollView(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(
+                              parent: BouncingScrollPhysics(),
                             ),
-                            if (filtered.isEmpty)
-                              SliverFillRemaining(child: _buildEmptyState())
-                            else
-                              SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  8,
-                                  16,
-                                  120,
-                                ),
-                                sliver: SliverList(
-                                  delegate: SliverChildBuilderDelegate((
-                                    context,
-                                    index,
-                                  ) {
-                                    return _staggered(
-                                      index: index + 3,
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 12,
-                                        ),
-                                        child: _buildOrderCard(filtered[index]),
-                                      ),
-                                    );
-                                  }, childCount: filtered.length),
+                            slivers: [
+                              SliverToBoxAdapter(
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 10),
+                                    _staggered(
+                                      index: 0,
+                                      child: _buildSummaryRow(),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    _staggered(
+                                      index: 1,
+                                      child: _buildSearchBar(),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _staggered(index: 2, child: _buildTabRow()),
+                                    const SizedBox(height: 4),
+                                  ],
                                 ),
                               ),
-                          ],
+                              if (filtered.isEmpty)
+                                SliverFillRemaining(child: _buildEmptyState())
+                              else
+                                SliverPadding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    8,
+                                    16,
+                                    120,
+                                  ),
+                                  sliver: SliverList(
+                                    delegate: SliverChildBuilderDelegate((
+                                      context,
+                                      index,
+                                    ) {
+                                      return _staggered(
+                                        index: index + 3,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 12,
+                                          ),
+                                          child: _buildOrderCard(filtered[index]),
+                                        ),
+                                      );
+                                    }, childCount: filtered.length),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -394,6 +472,9 @@ class _HistoryScreenState extends State<HistoryScreen>
   //  HEADER
   // ══════════════════════════════════════════════
   Widget _buildHeader() {
+    final hasActiveFilter =
+        _sortBy != 'terbaru' || _selectedServiceFilter != 'Semua';
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
       decoration: const BoxDecoration(
@@ -433,16 +514,148 @@ class _HistoryScreenState extends State<HistoryScreen>
             ],
           ),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _showFilterBottomSheet,
               borderRadius: BorderRadius.circular(12),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: hasActiveFilter
+                          ? const Color(0xFFEFF6FF)
+                          : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: hasActiveFilter ? _blue : Colors.transparent,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.tune_rounded,
+                      color: hasActiveFilter ? _blue : _textMid,
+                      size: 18,
+                    ),
+                  ),
+                  if (hasActiveFilter)
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: _blue,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            child: const Icon(Icons.tune_rounded, color: _textMid, size: 18),
           ),
         ],
       ),
+    );
+  }
+
+  // ══════════════════════════════════════════════
+  //  LOCATION STRIP (UBAH LOKASI LANGSUNG DI RIWAYAT)
+  // ══════════════════════════════════════════════
+  Widget _buildLocationStrip() {
+    return ValueListenableBuilder<AddressItem>(
+      valueListenable: AddressService.currentAddressNotifier,
+      builder: (context, currentAddress, _) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => AddressService.showAddressPickerSheet(context),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: _blueLight,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.location_on_rounded,
+                        color: _blue,
+                        size: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        currentAddress.label,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: _blue,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        currentAddress.address,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: _textMid,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Ubah',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _blue,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 16,
+                      color: _blue,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -459,6 +672,8 @@ class _HistoryScreenState extends State<HistoryScreen>
             label: 'Total Pesanan',
             value: '${_orders.length}',
             color: _blue,
+            isSelected: _selectedTab == 0,
+            onTap: () => setState(() => _selectedTab = 0),
           ),
           const SizedBox(width: 10),
           _buildSummaryCard(
@@ -466,6 +681,8 @@ class _HistoryScreenState extends State<HistoryScreen>
             label: 'Total Belanja',
             value: _formatPrice(_totalSpend),
             color: const Color(0xFF0891B2),
+            isSelected: _selectedTab == 2,
+            onTap: () => setState(() => _selectedTab = 2),
           ),
           const SizedBox(width: 10),
           _buildSummaryCard(
@@ -474,6 +691,8 @@ class _HistoryScreenState extends State<HistoryScreen>
             value: '$_activeCount',
             color: const Color(0xFF16A34A),
             highlight: _activeCount > 0,
+            isSelected: _selectedTab == 1,
+            onTap: () => setState(() => _selectedTab = 1),
           ),
         ],
       ),
@@ -486,54 +705,70 @@ class _HistoryScreenState extends State<HistoryScreen>
     required String value,
     required Color color,
     bool highlight = false,
+    bool isSelected = false,
+    VoidCallback? onTap,
   }) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: highlight ? color.withValues(alpha: 0.35) : _border,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isSelected ? color.withValues(alpha: 0.06) : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isSelected
+                    ? color
+                    : highlight
+                        ? color.withValues(alpha: 0.35)
+                        : _border,
+                width: isSelected ? 1.5 : 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: highlight ? 0.12 : 0.05),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: color, size: 14),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  value,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: highlight || isSelected ? color : _textDark,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? color : _textHint,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: highlight ? 0.12 : 0.05),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 14),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: highlight ? color : _textDark,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 9,
-                fontWeight: FontWeight.w500,
-                color: _textHint,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -675,252 +910,249 @@ class _HistoryScreenState extends State<HistoryScreen>
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // ─ Card top
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Shop image
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    order.shopImageUrl,
-                    width: 58,
-                    height: 58,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, stack) => Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        color: _blueLight,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.storefront_rounded, color: _blue),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              order.shopName,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: _textDark,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openOrderDetail(order),
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            children: [
+              // ─ Card top
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Shop image
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        order.shopImageUrl,
+                        width: 58,
+                        height: 58,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, stack) => Container(
+                          width: 58,
+                          height: 58,
+                          decoration: BoxDecoration(
+                            color: _blueLight,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          // Status chip
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusInfo.bgColor,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isActive)
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 4),
-                                    child: _PulsingDot(
-                                      color: statusInfo.textColor,
-                                    ),
+                          child: const Icon(
+                            Icons.storefront_rounded,
+                            color: _blue,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  order.shopName,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: _textDark,
                                   ),
-                                Text(
-                                  statusInfo.label,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              // Status chip
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: statusInfo.bgColor,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isActive)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(right: 4),
+                                        child: _PulsingDot(
+                                          color: statusInfo.textColor,
+                                        ),
+                                      ),
+                                    Text(
+                                      statusInfo.label,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: statusInfo.textColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          // Service type badge & date
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _blueLight,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  order.serviceType,
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
-                                    color: statusInfo.textColor,
+                                    color: _blue,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '•  ${_formatDate(order.date)}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  color: _textLight,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          // Stats row: weight & TRK id
+                          Row(
+                            children: [
+                              _miniStat(
+                                Icons.scale_rounded,
+                                '${order.weightKg} kg',
+                              ),
+                              const SizedBox(width: 10),
+                              _miniStat(
+                                Icons.tag_rounded,
+                                order.id,
+                              ),
+                            ],
+                          ),
+                          if (order.notes != null) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  size: 11,
+                                  color: _textHint,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    order.notes!,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 10,
+                                      color: _textLight,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _blueLight,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              order.serviceType,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: _blue,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '• ${_formatDate(order.date)}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              color: _textHint,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          _miniStat(
-                            Icons.scale_rounded,
-                            '${order.weightKg} kg',
-                          ),
-                          const SizedBox(width: 12),
-                          _miniStat(
-                            Icons.tag_rounded,
-                            order.id.substring(0, 8).toUpperCase(),
-                          ),
-                        ],
-                      ),
-                      if (order.notes != null && order.notes!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.sticky_note_2_rounded,
-                              size: 12,
-                              color: _textHint,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                order.notes!,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
-                                  color: _textHint,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
                           ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ─ Card bottom bar
-          Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-              border: Border(top: BorderSide(color: _border)),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              children: [
-                // Price
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Bayar',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        color: _textHint,
-                      ),
-                    ),
-                    Text(
-                      _formatPrice(order.totalPrice),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: _textDark,
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    order.paymentMethod,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      color: _textLight,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+              ),
+
+              // ─ Card bottom bar
+              Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  borderRadius:
+                      BorderRadius.vertical(bottom: Radius.circular(20)),
+                  border: Border(top: BorderSide(color: _border)),
                 ),
-                const Spacer(),
-                // Action buttons
-                if (order.status == OrderStatus.done) ...[
-                  _actionButton(
-                    label: 'Pesan Lagi',
-                    icon: Icons.refresh_rounded,
-                    filled: false,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Membuat ulang pesanan dari ${order.shopName}...',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              color: Colors.white,
-                            ),
-                          ),
-                          backgroundColor: _blue,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  children: [
+                    // Price
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Total Bayar',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            color: _textHint,
                           ),
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                _actionButton(
-                  label: isActive ? 'Lacak' : 'Detail',
-                  icon: isActive
-                      ? Icons.location_on_rounded
-                      : Icons.receipt_rounded,
-                  filled: true,
-                  onTap: () => _openOrderDetail(order),
+                        Text(
+                          _formatPrice(order.totalPrice),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: _textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        order.paymentMethod,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          color: _textLight,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    // Action buttons
+                    if (order.status == OrderStatus.done) ...[
+                      _actionButton(
+                        label: 'Pesan Lagi',
+                        icon: Icons.refresh_rounded,
+                        filled: false,
+                        onTap: () => _showReorderBottomSheet(order),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    _actionButton(
+                      label: isActive ? 'Lacak' : 'Detail',
+                      icon: isActive
+                          ? Icons.location_on_rounded
+                          : Icons.receipt_rounded,
+                      filled: true,
+                      onTap: () => _openOrderDetail(order),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -949,41 +1181,666 @@ class _HistoryScreenState extends State<HistoryScreen>
     required bool filled,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: filled ? _blue : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: filled ? _blue : _border),
-          boxShadow: filled
-              ? [
-                  BoxShadow(
-                    color: _blue.withValues(alpha: 0.28),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 13, color: filled ? Colors.white : _textMid),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: filled ? Colors.white : _textMid,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: filled ? _blue : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _blue),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 13, color: filled ? Colors.white : _blue),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: filled ? Colors.white : _blue,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  // ══════════════════════════════════════════════
+  //  MODAL PESAN LAGI
+  // ══════════════════════════════════════════════
+  void _showReorderBottomSheet(_OrderHistory order) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x260F172A),
+                    blurRadius: 30,
+                    offset: Offset(0, -6),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFCBD5E1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: _blueLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.refresh_rounded,
+                              color: _blue,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Pesan Ulang Laundry',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 17,
+                                    color: _textDark,
+                                  ),
+                                ),
+                                Text(
+                                  'Pesan kembali cucian di outlet ini',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    color: _textLight,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: _textLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Card info outlet
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: _surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _border),
+                        ),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                order.shopImageUrl,
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  width: 50,
+                                  height: 50,
+                                  color: _blueLight,
+                                  child: const Icon(
+                                    Icons.storefront_rounded,
+                                    color: _blue,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    order.shopName,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: _textDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${order.serviceType} • ${order.weightKg} kg',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      color: _textLight,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              _formatPrice(order.totalPrice),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: _blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Lokasi Antar / Jemput
+                      Text(
+                        'LOKASI PENJEMPUTAN & PENGANTARAN',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _textHint,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ValueListenableBuilder<AddressItem>(
+                        valueListenable: AddressService.currentAddressNotifier,
+                        builder: (context, currentAddress, _) {
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: _border),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_on_rounded,
+                                  color: _blue,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        currentAddress.label,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                          color: _textDark,
+                                        ),
+                                      ),
+                                      Text(
+                                        currentAddress.address,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          color: _textLight,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    AddressService.showAddressPickerSheet(
+                                      context,
+                                    );
+                                  },
+                                  child: Text(
+                                    'Ubah',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: _blue,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Submit button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const OrderFlowScreen(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _blue,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Lanjut ke Pemesanan',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ══════════════════════════════════════════════
+  //  MODAL FILTER & SORT
+  // ══════════════════════════════════════════════
+  void _showFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        String tempSort = _sortBy;
+        String tempFilter = _selectedServiceFilter;
+
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final services = [
+              'Semua',
+              'Kilat Express',
+              'Reguler',
+              'Dry Clean',
+              'Setrika Only',
+            ];
+            final sortOptions = [
+              {
+                'id': 'terbaru',
+                'name': 'Terbaru',
+                'icon': Icons.calendar_today_rounded,
+              },
+              {
+                'id': 'terlama',
+                'name': 'Terlama',
+                'icon': Icons.history_rounded,
+              },
+              {
+                'id': 'tertinggi',
+                'name': 'Total Tertinggi',
+                'icon': Icons.trending_up_rounded,
+              },
+              {
+                'id': 'terendah',
+                'name': 'Total Terendah',
+                'icon': Icons.trending_down_rounded,
+              },
+            ];
+
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x260F172A),
+                        blurRadius: 30,
+                        offset: Offset(0, -6),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 44,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFCBD5E1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: _blueLight,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.tune_rounded,
+                                  color: _blue,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Filter & Urutkan Pesanan',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 17,
+                                    color: _textDark,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  color: _textLight,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Urutkan
+                          Text(
+                            'URUTKAN BERDASARKAN',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _textHint,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: sortOptions.map((opt) {
+                              final isSel = tempSort == opt['id'];
+                              return InkWell(
+                                onTap: () => setSheetState(
+                                  () => tempSort = opt['id'] as String,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSel ? _blue : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        opt['icon'] as IconData,
+                                        size: 14,
+                                        color: isSel ? Colors.white : _textMid,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        opt['name'] as String,
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: isSel ? Colors.white : _textDark,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Jenis Layanan
+                          Text(
+                            'JENIS LAYANAN',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _textHint,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: services.map((srv) {
+                              final isSel = tempFilter == srv;
+                              return InkWell(
+                                onTap: () =>
+                                    setSheetState(() => tempFilter = srv),
+                                borderRadius: BorderRadius.circular(10),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSel ? _blue : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    srv,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSel ? Colors.white : _textDark,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Lokasi Pengantaran
+                          Text(
+                            'LOKASI PENGANTARAN AKTIF',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _textHint,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ValueListenableBuilder<AddressItem>(
+                            valueListenable:
+                                AddressService.currentAddressNotifier,
+                            builder: (context, currentAddress, _) {
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: _surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: _border),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on_rounded,
+                                      color: _blue,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '${currentAddress.label} • ${currentAddress.address}',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: _textDark,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    InkWell(
+                                      onTap: () {
+                                        AddressService.showAddressPickerSheet(
+                                          context,
+                                        );
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 4,
+                                        ),
+                                        child: Text(
+                                          'Ubah',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: _blue,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Action Buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _sortBy = 'terbaru';
+                                      _selectedServiceFilter = 'Semua';
+                                    });
+                                    Navigator.pop(ctx);
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    side: const BorderSide(color: _border),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Reset',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: _textMid,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _sortBy = tempSort;
+                                      _selectedServiceFilter = tempFilter;
+                                    });
+                                    Navigator.pop(ctx);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _blue,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: Text(
+                                    'Terapkan Filter',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -991,34 +1848,44 @@ class _HistoryScreenState extends State<HistoryScreen>
   //  EMPTY STATE
   // ══════════════════════════════════════════════
   Widget _buildEmptyState() {
-    final labels = [
+    final titles = [
       'Belum ada pesanan',
       'Tidak ada pesanan aktif',
       'Belum ada pesanan selesai',
       'Tidak ada pesanan dibatalkan',
     ];
+    final descs = [
+      'Kamu belum pernah melakukan transaksi laundry.',
+      'Saat ini tidak ada cucian yang sedang diproses.',
+      'Pesanan yang sudah selesai akan muncul di sini.',
+      'Tidak ada riwayat pesanan yang dibatalkan.',
+    ];
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
                 color: _blueLight,
+                shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.inbox_rounded, color: _blue, size: 44),
+              child: const Icon(
+                Icons.receipt_long_rounded,
+                size: 40,
+                color: _blue,
+              ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty
                   ? 'Tidak ada hasil untuk "$_searchQuery"'
-                  : labels[_selectedTab],
+                  : titles[_selectedTab],
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: _textDark,
               ),
@@ -1026,12 +1893,45 @@ class _HistoryScreenState extends State<HistoryScreen>
             ),
             const SizedBox(height: 6),
             Text(
-              'Coba filter atau kategori lain',
+              _searchQuery.isNotEmpty
+                  ? 'Coba gunakan kata kunci pencarian yang lain.'
+                  : descs[_selectedTab],
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
+                fontSize: 12,
                 color: _textLight,
               ),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const OrderFlowScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: Text(
+                'Mulai Cuci Sekarang',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
             ),
           ],
         ),
@@ -1080,14 +1980,38 @@ class _HistoryScreenState extends State<HistoryScreen>
     return InkWell(
       onTap: () {
         if (index == 0) {
-          Navigator.pop(context); // Back to home
+          _navigateToHome();
+        } else if (index == 1) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const OrderFlowScreen()),
+          );
         } else if (index == 2) {
+          final activeOrder = _orders.firstWhere(
+            (o) =>
+                o.status == OrderStatus.active ||
+                o.status == OrderStatus.washing ||
+                o.status == OrderStatus.drying,
+            orElse: () => _orders.first,
+          );
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  const OrderTrackingPage(orderId: 'TRK-98421'),
+              builder: (context) => OrderTrackingPage(orderId: activeOrder.id),
             ),
+          );
+        } else if (index == 3) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        } else if (index == 4) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ProfileScreen()),
           );
         }
       },
@@ -1104,7 +2028,11 @@ class _HistoryScreenState extends State<HistoryScreen>
                 color: isActive ? _blueLight : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, size: 22, color: isActive ? _blue : _textHint),
+              child: Icon(
+                icon,
+                size: 22,
+                color: isActive ? _blue : _textHint,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
@@ -1121,22 +2049,27 @@ class _HistoryScreenState extends State<HistoryScreen>
     );
   }
 
-  // ══════════════════════════════════════════════
-  //  HELPERS
-  // ══════════════════════════════════════════════
-  String _formatPrice(int price) {
-    final s = price.toString();
-    final buf = StringBuffer('Rp ');
-    final offset = s.length % 3;
-    for (int i = 0; i < s.length; i++) {
-      if (i != 0 && (i - offset) % 3 == 0) buf.write('.');
-      buf.write(s[i]);
+  // ──────────────────────────
+  //  Helpers
+  // ──────────────────────────
+  String _formatPrice(int amount) {
+    final s = amount.toString();
+    final buffer = StringBuffer('Rp ');
+    int offset = s.length % 3;
+    if (offset > 0) {
+      buffer.write(s.substring(0, offset));
+      if (offset < s.length) buffer.write('.');
     }
-    return buf.toString();
+    for (int i = offset; i < s.length; i += 3) {
+      buffer.write(s.substring(i, i + 3));
+      if (i + 3 < s.length) buffer.write('.');
+    }
+    return buffer.toString();
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(DateTime dt) {
     const months = [
+      '',
       'Jan',
       'Feb',
       'Mar',
@@ -1150,30 +2083,35 @@ class _HistoryScreenState extends State<HistoryScreen>
       'Nov',
       'Des',
     ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    return '${dt.day} ${months[dt.month]} ${dt.year}';
   }
 
   _StatusInfo _statusInfo(OrderStatus status) {
     switch (status) {
       case OrderStatus.active:
       case OrderStatus.washing:
+        return const _StatusInfo(
+          label: 'Dicuci',
+          textColor: Color(0xFF0077E6),
+          bgColor: Color(0xFFEFF6FF),
+        );
       case OrderStatus.drying:
-        return _StatusInfo(
-          label: status == OrderStatus.drying ? 'Dikeringkan' : 'Dicuci',
-          bgColor: _blue.withValues(alpha: 0.10),
-          textColor: _blue,
+        return const _StatusInfo(
+          label: 'Dikeringkan',
+          textColor: Color(0xFFD97706),
+          bgColor: Color(0xFFFEF3C7),
         );
       case OrderStatus.done:
-        return _StatusInfo(
+        return const _StatusInfo(
           label: 'Selesai',
-          bgColor: const Color(0xFFDCFCE7),
-          textColor: const Color(0xFF16A34A),
+          textColor: Color(0xFF16A34A),
+          bgColor: Color(0xFFDCFCE7),
         );
       case OrderStatus.cancelled:
-        return _StatusInfo(
+        return const _StatusInfo(
           label: 'Dibatalkan',
-          bgColor: const Color(0xFFFEF2F2),
-          textColor: const Color(0xFFDC2626),
+          textColor: Color(0xFFDC2626),
+          bgColor: Color(0xFFFEE2E2),
         );
     }
   }
@@ -1181,17 +2119,18 @@ class _HistoryScreenState extends State<HistoryScreen>
 
 class _StatusInfo {
   final String label;
-  final Color bgColor;
   final Color textColor;
+  final Color bgColor;
+
   const _StatusInfo({
     required this.label,
-    required this.bgColor,
     required this.textColor,
+    required this.bgColor,
   });
 }
 
 // ─────────────────────────────────────────────
-//  PULSING DOT — for active status chip
+//  Pulsing Dot (for active order badge)
 // ─────────────────────────────────────────────
 class _PulsingDot extends StatefulWidget {
   final Color color;
@@ -1213,10 +2152,9 @@ class _PulsingDotState extends State<_PulsingDot>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _anim = Tween<double>(
-      begin: 0.4,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(begin: 0.35, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -1227,14 +2165,14 @@ class _PulsingDotState extends State<_PulsingDot>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (context, _) => Container(
-        width: 7,
-        height: 7,
+    return FadeTransition(
+      opacity: _anim,
+      child: Container(
+        width: 6,
+        height: 6,
         decoration: BoxDecoration(
+          color: widget.color,
           shape: BoxShape.circle,
-          color: widget.color.withValues(alpha: _anim.value),
         ),
       ),
     );

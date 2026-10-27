@@ -10,6 +10,9 @@ import '../models/user_model.dart';
 import 'order_tracking_page.dart';
 import 'role_selection_screen.dart';
 import 'history_screen.dart';
+import 'home_screen.dart';
+import 'order_flow_screen.dart';
+import '../services/address_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -1033,7 +1036,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return InkWell(
       onTap: () {
         if (index == 0) {
-          Navigator.pop(context);
+          if (Navigator.canPop(context)) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          }
+        } else if (index == 1) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const OrderFlowScreen()),
+          );
         } else if (index == 2) {
           Navigator.push(
             context,
@@ -2233,6 +2248,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     }
                                   });
                                   _savePreferences();
+                                  AddressService.selectAddress(
+                                    AddressItem(
+                                      id: item['id'] ?? item['label']!,
+                                      label: item['label']!,
+                                      address: item['address']!,
+                                      note: item['note'] ?? '',
+                                      isDefault: true,
+                                    ),
+                                  );
                                   Navigator.pop(ctx);
                                   _showToast(
                                     'Alamat utama diubah ke ${item['label']}',
