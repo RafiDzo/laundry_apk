@@ -9,6 +9,8 @@ import '../services/supabase_service.dart';
 import '../models/user_model.dart';
 import 'order_history_screen.dart';
 import 'role_selection_screen.dart';
+import 'home_screen.dart';
+import '../services/address_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -27,7 +29,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _customAvatarUrl;
   String? _customName;
   String _specialNotes = 'Pisahkan pakaian putih & bahan sensitif';
-  String _primaryAddress = 'Rumah • Jl. Merdeka No. 12, Panggilan Kurir: Bel Hitam';
+  String _primaryAddress =
+      'Rumah • Jl. Merdeka No. 12, Panggilan Kurir: Bel Hitam';
   String _userPhone = '0812-3456-7890';
   String _defaultPayment = 'DANA (0812-3456-7890)';
   String _danaNumber = '0812-3456-7890';
@@ -79,10 +82,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _customAvatarUrl = prefs.getString('pref_avatar_url');
       _customName = prefs.getString('pref_user_name');
-      _specialNotes = prefs.getString('pref_notes') ?? 'Pisahkan pakaian putih & bahan sensitif';
+      _specialNotes =
+          prefs.getString('pref_notes') ??
+          'Pisahkan pakaian putih & bahan sensitif';
       _userPhone = prefs.getString('pref_phone') ?? '0812-3456-7890';
-      _primaryAddress = prefs.getString('pref_address') ?? _addresses[0]['address']!;
-      _defaultPayment = prefs.getString('pref_payment') ?? 'DANA (0812-3456-7890)';
+      _primaryAddress =
+          prefs.getString('pref_address') ?? _addresses[0]['address']!;
+      _defaultPayment =
+          prefs.getString('pref_payment') ?? 'DANA (0812-3456-7890)';
       _danaNumber = prefs.getString('pref_dana_number') ?? '0812-3456-7890';
       _gopayNumber = prefs.getString('pref_gopay_number') ?? '0812-3456-7890';
       _ovoNumber = prefs.getString('pref_ovo_number') ?? '';
@@ -196,7 +203,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_userData != null && _userData!.name.trim().isNotEmpty) {
       return _userData!.name;
     }
-    final metaName = _authService.currentUser?.userMetadata?['name']?.toString();
+    final metaName = _authService.currentUser?.userMetadata?['name']
+        ?.toString();
     if (metaName != null && metaName.trim().isNotEmpty) {
       return metaName;
     }
@@ -209,7 +217,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String _getUserEmail() {
-    return _userData?.email ?? _authService.currentUser?.email ?? 'krafi2320@gmail.com';
+    return _userData?.email ??
+        _authService.currentUser?.email ??
+        'krafi2320@gmail.com';
   }
 
   String _getInitialLetter() {
@@ -221,7 +231,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEDF2F7), // Neutral background for desktop
+      backgroundColor: const Color(
+        0xFFEDF2F7,
+      ), // Neutral background for desktop
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 500),
@@ -287,11 +299,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 16),
                               _buildMembershipTierCard(),
                               const SizedBox(height: 22),
-                              _buildSectionHeader('PREFERENSI & AKUN', 'Kelola alamat dan setelan cuci'),
+                              _buildSectionHeader(
+                                'PREFERENSI & AKUN',
+                                'Kelola alamat dan setelan cuci',
+                              ),
                               const SizedBox(height: 10),
                               _buildAccountGroup(),
                               const SizedBox(height: 22),
-                              _buildSectionHeader('KEAMANAN & DUKUNGAN', 'Sandi dan bantuan layanan'),
+                              _buildSectionHeader(
+                                'KEAMANAN & DUKUNGAN',
+                                'Sandi dan bantuan layanan',
+                              ),
                               const SizedBox(height: 10),
                               _buildSecurityGroup(),
                               const SizedBox(height: 20),
@@ -416,7 +434,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   height: 76,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF0077E6), width: 2.5),
+                    border: Border.all(
+                      color: const Color(0xFF0077E6),
+                      width: 2.5,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFF0077E6).withValues(alpha: 0.30),
@@ -426,21 +447,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                   child: ClipOval(
-                    child: _customAvatarUrl != null && _customAvatarUrl!.isNotEmpty
+                    child:
+                        _customAvatarUrl != null && _customAvatarUrl!.isNotEmpty
                         ? (_customAvatarUrl!.startsWith('data:image')
-                            ? Image.memory(
-                                base64Decode(_customAvatarUrl!.split(',').last),
-                                width: 76,
-                                height: 76,
-                                fit: BoxFit.cover,
-                              )
-                            : Image.network(
-                                _customAvatarUrl!,
-                                width: 76,
-                                height: 76,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => _buildInitialsAvatar(initial),
-                              ))
+                              ? Image.memory(
+                                  base64Decode(
+                                    _customAvatarUrl!.split(',').last,
+                                  ),
+                                  width: 76,
+                                  height: 76,
+                                  fit: BoxFit.cover,
+                                )
+                              : Image.network(
+                                  _customAvatarUrl!,
+                                  width: 76,
+                                  height: 76,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      _buildInitialsAvatar(initial),
+                                ))
                         : _buildInitialsAvatar(initial),
                   ),
                 ),
@@ -456,7 +481,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       border: Border.all(color: Colors.white, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF0077E6).withValues(alpha: 0.45),
+                          color: const Color(
+                            0xFF0077E6,
+                          ).withValues(alpha: 0.45),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -496,7 +523,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onTap: _showEditNameDialog,
                       child: const Padding(
                         padding: EdgeInsets.all(4),
-                        child: Icon(Icons.edit_rounded, size: 16, color: Color(0xFF0077E6)),
+                        child: Icon(
+                          Icons.edit_rounded,
+                          size: 16,
+                          color: Color(0xFF0077E6),
+                        ),
                       ),
                     ),
                   ],
@@ -514,7 +545,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCFCE7),
                     borderRadius: BorderRadius.circular(6),
@@ -522,7 +556,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.check_circle_rounded, size: 13, color: Color(0xFF16A34A)),
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        size: 13,
+                        color: Color(0xFF16A34A),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Pelanggan Terverifikasi',
@@ -598,7 +636,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 18),
+                    child: const Icon(
+                      Icons.workspace_premium_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -634,11 +676,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildTierStat('$_tokenBalance', 'Token Saldo'),
+              _buildTierStat('$_tokenBalance', 'Token Saldo', onTap: null),
               Container(width: 1, height: 26, color: Colors.white24),
-              _buildTierStat('14', 'Total Order'),
+              _buildTierStat(
+                '14',
+                'Total Order',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const OrderHistoryScreen(),
+                    ),
+                  );
+                },
+              ),
               Container(width: 1, height: 26, color: Colors.white24),
-              _buildTierStat('120', 'Poin Reward'),
+              _buildTierStat('120', 'Poin Reward', onTap: null),
             ],
           ),
         ],
@@ -646,27 +699,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildTierStat(String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.plusJakartaSans(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
+  Widget _buildTierStat(String value, String label, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(
-            color: Colors.white.withValues(alpha: 0.85),
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 2),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (onTap != null) ...[
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Colors.white.withValues(alpha: 0.75),
+                  size: 9,
+                ),
+              ],
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -730,14 +799,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: _primaryAddress,
             onTap: _showAddressPickerSheet,
           ),
-          const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
+          const Divider(
+            height: 1,
+            indent: 56,
+            endIndent: 16,
+            color: Color(0xFFF1F5F9),
+          ),
           _buildQuietRow(
             icon: Icons.note_alt_rounded,
             title: 'Catatan Khusus Cucian',
             subtitle: _specialNotes,
             onTap: _showNotesDialog,
           ),
-          const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
+          const Divider(
+            height: 1,
+            indent: 56,
+            endIndent: 16,
+            color: Color(0xFFF1F5F9),
+          ),
           _buildQuietRow(
             icon: Icons.payment_rounded,
             title: 'Metode Pembayaran',
@@ -777,7 +856,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: 'Perbarui kata sandi akun Anda',
             onTap: _showChangePasswordDialog,
           ),
-          const Divider(height: 1, indent: 56, endIndent: 16, color: Color(0xFFF1F5F9)),
+          const Divider(
+            height: 1,
+            indent: 56,
+            endIndent: 16,
+            color: Color(0xFFF1F5F9),
+          ),
           _buildQuietRow(
             icon: Icons.support_agent_rounded,
             title: 'Pusat Bantuan & CS',
@@ -881,7 +965,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.logout_rounded, color: Color(0xFFDC2626), size: 18),
+              const Icon(
+                Icons.logout_rounded,
+                color: Color(0xFFDC2626),
+                size: 18,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Keluar dari Akun',
@@ -946,7 +1034,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return InkWell(
       onTap: () {
         if (index == 0) {
-          Navigator.pop(context);
+          if (Navigator.canPop(context)) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          }
+        } else if (index == 1) {
+          // Pesanan dibuat dari Beranda (pilih outlet dulu), agar pesanan
+          // masuk ke dashboard mitra pemilik outlet yang tepat
+          Navigator.of(context).popUntil((route) => route.isFirst);
         } else if (index == 2) {
           openActiveOrderTracking(context);
         } else if (index == 3) {
@@ -972,14 +1071,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Icon(
                 icon,
                 size: 22,
-                color: isActive ? const Color(0xFF0077E6) : const Color(0xFF94A3B8),
+                color: isActive
+                    ? const Color(0xFF0077E6)
+                    : const Color(0xFF94A3B8),
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: GoogleFonts.plusJakartaSans(
-                color: isActive ? const Color(0xFF0077E6) : const Color(0xFF94A3B8),
+                color: isActive
+                    ? const Color(0xFF0077E6)
+                    : const Color(0xFF94A3B8),
                 fontSize: 11,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
               ),
@@ -1003,7 +1106,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             'Ubah Nama Profil',
             style: GoogleFonts.plusJakartaSans(
@@ -1015,10 +1120,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           content: TextField(
             controller: controller,
             autofocus: true,
-            style: GoogleFonts.plusJakartaSans(color: const Color(0xFF0F172A), fontSize: 14),
+            style: GoogleFonts.plusJakartaSans(
+              color: const Color(0xFF0F172A),
+              fontSize: 14,
+            ),
             decoration: InputDecoration(
               hintText: 'Nama lengkap Anda',
-              hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8)),
+              hintStyle: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFF94A3B8),
+              ),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               border: OutlineInputBorder(
@@ -1031,15 +1141,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                borderSide: const BorderSide(
+                  color: Color(0xFF0077E6),
+                  width: 1.5,
+                ),
               ),
             ),
           ),
           actions: [
             TextButton(
               onPressed: isSaving ? null : () => Navigator.pop(ctx),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
-              child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF64748B),
+              ),
+              child: Text(
+                'Batal',
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+              ),
             ),
             ElevatedButton(
               onPressed: isSaving
@@ -1082,7 +1200,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       final uid = _authService.currentUser?.id;
                       if (uid != null) {
                         try {
-                          await _supabaseService.updateUserProfile(uid, {'name': newName});
+                          await _supabaseService.updateUserProfile(uid, {
+                            'name': newName,
+                          });
                         } catch (_) {
                           // Abaikan jika ada pembatasan RLS pada tabel users
                         }
@@ -1101,7 +1221,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: const Color(0xFF0077E6),
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: isSaving
                   ? const SizedBox(
@@ -1112,7 +1234,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : Text('Simpan', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+                  : Text(
+                      'Simpan',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
             ),
           ],
         ),
@@ -1139,10 +1266,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         content: TextField(
           controller: controller,
           maxLines: 3,
-          style: GoogleFonts.plusJakartaSans(color: const Color(0xFF0F172A), fontSize: 13),
+          style: GoogleFonts.plusJakartaSans(
+            color: const Color(0xFF0F172A),
+            fontSize: 13,
+          ),
           decoration: InputDecoration(
             hintText: 'Contoh: Jangan gunakan pemutih untuk baju batik',
-            hintStyle: GoogleFonts.plusJakartaSans(color: const Color(0xFF94A3B8), fontSize: 12),
+            hintStyle: GoogleFonts.plusJakartaSans(
+              color: const Color(0xFF94A3B8),
+              fontSize: 12,
+            ),
             filled: true,
             fillColor: const Color(0xFFF8FAFC),
             border: OutlineInputBorder(
@@ -1155,15 +1288,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+              borderSide: const BorderSide(
+                color: Color(0xFF0077E6),
+                width: 1.5,
+              ),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
-            child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF64748B),
+            ),
+            child: Text(
+              'Batal',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1176,9 +1317,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: const Color(0xFF0077E6),
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: Text('Simpan', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+            child: Text(
+              'Simpan',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -1269,7 +1415,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           IconButton(
                             onPressed: () => Navigator.pop(ctx),
-                            icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFF64748B),
+                            ),
                             visualDensity: VisualDensity.compact,
                           ),
                         ],
@@ -1286,7 +1435,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // ── SECTION 1: E-WALLET ──
-                              _buildPaymentSectionHeader('E-Wallet & Saldo Digital', 'Terhubung Instan'),
+                              _buildPaymentSectionHeader(
+                                'E-Wallet & Saldo Digital',
+                                'Terhubung Instan',
+                              ),
                               const SizedBox(height: 8),
 
                               // DANA
@@ -1304,11 +1456,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   });
                                   _savePreferences();
                                   Navigator.pop(ctx);
-                                  _showToast('Metode pembayaran utama diubah ke DANA');
+                                  _showToast(
+                                    'Metode pembayaran utama diubah ke DANA',
+                                  );
                                 },
                                 onEditNumber: () {
                                   Navigator.pop(ctx);
-                                  _showEditEWalletNumberDialog('DANA', _danaNumber);
+                                  _showEditEWalletNumberDialog(
+                                    'DANA',
+                                    _danaNumber,
+                                  );
                                 },
                               ),
 
@@ -1328,11 +1485,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   });
                                   _savePreferences();
                                   Navigator.pop(ctx);
-                                  _showToast('Metode pembayaran utama diubah ke GoPay');
+                                  _showToast(
+                                    'Metode pembayaran utama diubah ke GoPay',
+                                  );
                                 },
                                 onEditNumber: () {
                                   Navigator.pop(ctx);
-                                  _showEditEWalletNumberDialog('GoPay', _gopayNumber);
+                                  _showEditEWalletNumberDialog(
+                                    'GoPay',
+                                    _gopayNumber,
+                                  );
                                 },
                               ),
 
@@ -1351,11 +1513,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   });
                                   _savePreferences();
                                   Navigator.pop(ctx);
-                                  _showToast('Metode pembayaran utama diubah ke OVO');
+                                  _showToast(
+                                    'Metode pembayaran utama diubah ke OVO',
+                                  );
                                 },
                                 onEditNumber: () {
                                   Navigator.pop(ctx);
-                                  _showEditEWalletNumberDialog('OVO', _ovoNumber);
+                                  _showEditEWalletNumberDialog(
+                                    'OVO',
+                                    _ovoNumber,
+                                  );
                                 },
                               ),
 
@@ -1366,12 +1533,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 brandColor: const Color(0xFFEE4D2D),
                                 number: '',
                                 extraSubtitle: 'ShopeePay / SPayLater',
-                                isSelected: _defaultPayment.startsWith('ShopeePay'),
+                                isSelected: _defaultPayment.startsWith(
+                                  'ShopeePay',
+                                ),
                                 onSelect: () {
                                   setState(() => _defaultPayment = 'ShopeePay');
                                   _savePreferences();
                                   Navigator.pop(ctx);
-                                  _showToast('Metode pembayaran utama diubah ke ShopeePay');
+                                  _showToast(
+                                    'Metode pembayaran utama diubah ke ShopeePay',
+                                  );
                                 },
                                 onEditNumber: null,
                               ),
@@ -1379,82 +1550,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 16),
 
                               // ── SECTION 2: TRANSFER BANK ──
-                              _buildPaymentSectionHeader('Transfer Bank / Virtual Account', 'Verifikasi Otomatis 24 Jam'),
+                              _buildPaymentSectionHeader(
+                                'Transfer Bank / Virtual Account',
+                                'Verifikasi Otomatis 24 Jam',
+                              ),
                               const SizedBox(height: 8),
 
                               _buildSimplePaymentCard(
                                 title: 'BCA Virtual Account',
-                                subtitle: 'Bisa dari m-BCA, KlikBCA, atau ATM BCA',
+                                subtitle:
+                                    'Bisa dari m-BCA, KlikBCA, atau ATM BCA',
                                 icon: Icons.account_balance_rounded,
                                 iconColor: const Color(0xFF003688),
                                 isSelected: _defaultPayment.contains('BCA'),
                                 onTap: () {
-                                  setState(() => _defaultPayment = 'BCA Virtual Account');
+                                  setState(
+                                    () =>
+                                        _defaultPayment = 'BCA Virtual Account',
+                                  );
                                   _savePreferences();
                                   Navigator.pop(ctx);
-                                  _showToast('Metode pembayaran utama diubah ke BCA');
+                                  _showToast(
+                                    'Metode pembayaran utama diubah ke BCA',
+                                  );
                                 },
                               ),
 
                               _buildSimplePaymentCard(
                                 title: 'Mandiri Virtual Account',
-                                subtitle: 'Bisa dari Livin\' by Mandiri atau ATM',
+                                subtitle:
+                                    'Bisa dari Livin\' by Mandiri atau ATM',
                                 icon: Icons.account_balance_rounded,
                                 iconColor: const Color(0xFF003D79),
                                 isSelected: _defaultPayment.contains('Mandiri'),
                                 onTap: () {
-                                  setState(() => _defaultPayment = 'Mandiri Virtual Account');
+                                  setState(
+                                    () => _defaultPayment =
+                                        'Mandiri Virtual Account',
+                                  );
                                   _savePreferences();
                                   Navigator.pop(ctx);
-                                  _showToast('Metode pembayaran utama diubah ke Mandiri');
+                                  _showToast(
+                                    'Metode pembayaran utama diubah ke Mandiri',
+                                  );
                                 },
                               ),
 
                               _buildSimplePaymentCard(
                                 title: 'BRI Virtual Account (BRIVA)',
-                                subtitle: 'Bisa dari BRImo, ATM BRI, dan Agen BRILink',
+                                subtitle:
+                                    'Bisa dari BRImo, ATM BRI, dan Agen BRILink',
                                 icon: Icons.account_balance_rounded,
                                 iconColor: const Color(0xFF00529C),
                                 isSelected: _defaultPayment.contains('BRI'),
                                 onTap: () {
-                                  setState(() => _defaultPayment = 'BRI Virtual Account');
+                                  setState(
+                                    () =>
+                                        _defaultPayment = 'BRI Virtual Account',
+                                  );
                                   _savePreferences();
                                   Navigator.pop(ctx);
-                                  _showToast('Metode pembayaran utama diubah ke BRIVA');
+                                  _showToast(
+                                    'Metode pembayaran utama diubah ke BRIVA',
+                                  );
                                 },
                               ),
 
                               const SizedBox(height: 16),
 
                               // ── SECTION 3: METODE LAINNYA ──
-                              _buildPaymentSectionHeader('Metode Lainnya', 'Fleksibel'),
+                              _buildPaymentSectionHeader(
+                                'Metode Lainnya',
+                                'Fleksibel',
+                              ),
                               const SizedBox(height: 8),
 
                               _buildSimplePaymentCard(
                                 title: 'QRIS (Semua Bank & E-Wallet)',
-                                subtitle: 'Scan QRIS via DANA, GoPay, BCA, dll. Bebas biaya admin',
+                                subtitle:
+                                    'Scan QRIS via DANA, GoPay, BCA, dll. Bebas biaya admin',
                                 icon: Icons.qr_code_scanner_rounded,
                                 iconColor: const Color(0xFF0F172A),
                                 isSelected: _defaultPayment.startsWith('QRIS'),
                                 onTap: () {
-                                  setState(() => _defaultPayment = 'QRIS Instant Pay');
+                                  setState(
+                                    () => _defaultPayment = 'QRIS Instant Pay',
+                                  );
                                   _savePreferences();
                                   Navigator.pop(ctx);
-                                  _showToast('Metode pembayaran utama diubah ke QRIS');
+                                  _showToast(
+                                    'Metode pembayaran utama diubah ke QRIS',
+                                  );
                                 },
                               ),
 
                               _buildSimplePaymentCard(
                                 title: 'Cash on Delivery (COD)',
-                                subtitle: 'Bayar tunai langsung ke kurir saat jemput atau antar',
+                                subtitle:
+                                    'Bayar tunai langsung ke kurir saat jemput atau antar',
                                 icon: Icons.handshake_rounded,
                                 iconColor: const Color(0xFF16A34A),
-                                isSelected: _defaultPayment.contains('COD') || _defaultPayment.contains('Cash'),
+                                isSelected:
+                                    _defaultPayment.contains('COD') ||
+                                    _defaultPayment.contains('Cash'),
                                 onTap: () {
-                                  setState(() => _defaultPayment = 'Cash on Delivery (COD)');
+                                  setState(
+                                    () => _defaultPayment =
+                                        'Cash on Delivery (COD)',
+                                  );
                                   _savePreferences();
                                   Navigator.pop(ctx);
-                                  _showToast('Metode pembayaran utama diubah ke COD');
+                                  _showToast(
+                                    'Metode pembayaran utama diubah ke COD',
+                                  );
                                 },
                               ),
                             ],
@@ -1569,7 +1777,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (number.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFDCFCE7),
                               borderRadius: BorderRadius.circular(6),
@@ -1594,7 +1805,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: number.isNotEmpty ? const Color(0xFF475569) : const Color(0xFF94A3B8),
+                        color: number.isNotEmpty
+                            ? const Color(0xFF475569)
+                            : const Color(0xFF94A3B8),
                       ),
                     ),
                   ],
@@ -1607,7 +1820,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onTap: onEditNumber,
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(8),
@@ -1617,7 +1833,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          number.isNotEmpty ? Icons.edit_rounded : Icons.add_rounded,
+                          number.isNotEmpty
+                              ? Icons.edit_rounded
+                              : Icons.add_rounded,
                           size: 13,
                           color: const Color(0xFF0077E6),
                         ),
@@ -1642,7 +1860,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 isSelected
                     ? Icons.check_circle_rounded
                     : Icons.radio_button_unchecked_rounded,
-                color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
+                color: isSelected
+                    ? const Color(0xFF0077E6)
+                    : const Color(0xFFCBD5E1),
                 size: 22,
               ),
             ],
@@ -1726,7 +1946,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 isSelected
                     ? Icons.check_circle_rounded
                     : Icons.radio_button_unchecked_rounded,
-                color: isSelected ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
+                color: isSelected
+                    ? const Color(0xFF0077E6)
+                    : const Color(0xFFCBD5E1),
                 size: 22,
               ),
             ],
@@ -1807,7 +2029,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -1818,7 +2043,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF0077E6),
+                    width: 1.5,
+                  ),
                 ),
               ),
             ),
@@ -1830,7 +2058,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.pop(ctx);
               _showPaymentOptionsDialog();
             },
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF64748B),
+            ),
             child: Text(
               'Batal',
               style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
@@ -1857,14 +2087,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               _savePreferences();
               Navigator.pop(ctx);
-              _showToast('Akun $walletName ($newNum) berhasil dihubungkan & disetel sebagai metode utama!');
+              _showToast(
+                'Akun $walletName ($newNum) berhasil dihubungkan & disetel sebagai metode utama!',
+              );
               _showPaymentOptionsDialog();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0077E6),
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
             child: Text(
@@ -1959,7 +2193,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(ctx),
-                          icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF64748B),
+                          ),
                           visualDensity: VisualDensity.compact,
                         ),
                       ],
@@ -1974,7 +2211,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: _addresses.map((item) {
-                            final isDefault = _primaryAddress.contains(item['label']!);
+                            final isDefault = _primaryAddress.contains(
+                              item['label']!,
+                            );
                             IconData addressIcon = Icons.home_rounded;
                             final labelLower = item['label']!.toLowerCase();
                             if (labelLower.contains('kantor')) {
@@ -1990,81 +2229,129 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: InkWell(
                                 onTap: () {
                                   setState(() {
-                                    _primaryAddress = '${item['label']!} • ${item['address']!}';
+                                    _primaryAddress =
+                                        '${item['label']!} • ${item['address']!}';
                                     for (var a in _addresses) {
-                                      a['isDefault'] = a['label'] == item['label'] ? 'true' : 'false';
+                                      a['isDefault'] =
+                                          a['label'] == item['label']
+                                          ? 'true'
+                                          : 'false';
                                     }
                                   });
                                   _savePreferences();
+                                  AddressService.selectAddress(
+                                    AddressItem(
+                                      id: item['id'] ?? item['label']!,
+                                      label: item['label']!,
+                                      address: item['address']!,
+                                      note: item['note'] ?? '',
+                                      isDefault: true,
+                                    ),
+                                  );
                                   Navigator.pop(ctx);
-                                  _showToast('Alamat utama diubah ke ${item['label']}');
+                                  _showToast(
+                                    'Alamat utama diubah ke ${item['label']}',
+                                  );
                                 },
                                 borderRadius: BorderRadius.circular(16),
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 200),
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: isDefault ? const Color(0xFFF0F7FF) : Colors.white,
+                                    color: isDefault
+                                        ? const Color(0xFFF0F7FF)
+                                        : Colors.white,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: isDefault ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+                                      color: isDefault
+                                          ? const Color(0xFF0077E6)
+                                          : const Color(0xFFE2E8F0),
                                       width: isDefault ? 2 : 1,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
                                         color: isDefault
-                                            ? const Color(0xFF0077E6).withValues(alpha: 0.08)
-                                            : const Color(0xFF0F172A).withValues(alpha: 0.03),
+                                            ? const Color(
+                                                0xFF0077E6,
+                                              ).withValues(alpha: 0.08)
+                                            : const Color(
+                                                0xFF0F172A,
+                                              ).withValues(alpha: 0.03),
                                         blurRadius: 10,
                                         offset: const Offset(0, 3),
                                       ),
                                     ],
                                   ),
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: isDefault ? const Color(0xFFDBEAFE) : const Color(0xFFF1F5F9),
-                                          borderRadius: BorderRadius.circular(10),
+                                          color: isDefault
+                                              ? const Color(0xFFDBEAFE)
+                                              : const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                         child: Icon(
                                           addressIcon,
                                           size: 18,
-                                          color: isDefault ? const Color(0xFF0077E6) : const Color(0xFF64748B),
+                                          color: isDefault
+                                              ? const Color(0xFF0077E6)
+                                              : const Color(0xFF64748B),
                                         ),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Row(
                                               children: [
                                                 Text(
                                                   item['label']!,
-                                                  style: GoogleFonts.plusJakartaSans(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 14,
-                                                    color: const Color(0xFF0F172A),
-                                                  ),
+                                                  style:
+                                                      GoogleFonts.plusJakartaSans(
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        fontSize: 14,
+                                                        color: const Color(
+                                                          0xFF0F172A,
+                                                        ),
+                                                      ),
                                                 ),
                                                 if (isDefault) ...[
                                                   const SizedBox(width: 8),
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 7,
+                                                          vertical: 2,
+                                                        ),
                                                     decoration: BoxDecoration(
-                                                      color: const Color(0xFFDBEAFE),
-                                                      borderRadius: BorderRadius.circular(6),
+                                                      color: const Color(
+                                                        0xFFDBEAFE,
+                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            6,
+                                                          ),
                                                     ),
                                                     child: Text(
                                                       'Utama',
-                                                      style: GoogleFonts.plusJakartaSans(
-                                                        fontSize: 10,
-                                                        fontWeight: FontWeight.w700,
-                                                        color: const Color(0xFF1D4ED8),
-                                                      ),
+                                                      style:
+                                                          GoogleFonts.plusJakartaSans(
+                                                            fontSize: 10,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            color: const Color(
+                                                              0xFF1D4ED8,
+                                                            ),
+                                                          ),
                                                     ),
                                                   ),
                                                 ],
@@ -2073,14 +2360,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             const SizedBox(height: 4),
                                             Text(
                                               item['address']!,
-                                              style: GoogleFonts.plusJakartaSans(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                                color: const Color(0xFF475569),
-                                                height: 1.35,
-                                              ),
+                                              style:
+                                                  GoogleFonts.plusJakartaSans(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: const Color(
+                                                      0xFF475569,
+                                                    ),
+                                                    height: 1.35,
+                                                  ),
                                             ),
-                                            if (item['note'] != null && item['note']!.isNotEmpty) ...[
+                                            if (item['note'] != null &&
+                                                item['note']!.isNotEmpty) ...[
                                               const SizedBox(height: 6),
                                               Row(
                                                 children: [
@@ -2093,13 +2384,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                   Expanded(
                                                     child: Text(
                                                       item['note']!,
-                                                      style: GoogleFonts.plusJakartaSans(
-                                                        fontSize: 11,
-                                                        color: const Color(0xFF64748B),
-                                                        fontStyle: FontStyle.italic,
-                                                      ),
+                                                      style:
+                                                          GoogleFonts.plusJakartaSans(
+                                                            fontSize: 11,
+                                                            color: const Color(
+                                                              0xFF64748B,
+                                                            ),
+                                                            fontStyle: FontStyle
+                                                                .italic,
+                                                          ),
                                                       maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ),
                                                 ],
@@ -2112,13 +2408,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          if (_addresses.length > 1 && !isDefault) ...[
+                                          if (_addresses.length > 1 &&
+                                              !isDefault) ...[
                                             InkWell(
                                               onTap: () {
                                                 Navigator.pop(ctx);
                                                 _confirmDeleteAddress(item);
                                               },
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                               child: const Padding(
                                                 padding: EdgeInsets.all(4),
                                                 child: Icon(
@@ -2131,12 +2429,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             const SizedBox(width: 6),
                                           ],
                                           Padding(
-                                            padding: const EdgeInsets.only(top: 2),
+                                            padding: const EdgeInsets.only(
+                                              top: 2,
+                                            ),
                                             child: Icon(
                                               isDefault
                                                   ? Icons.check_circle_rounded
-                                                  : Icons.radio_button_unchecked_rounded,
-                                              color: isDefault ? const Color(0xFF0077E6) : const Color(0xFFCBD5E1),
+                                                  : Icons
+                                                        .radio_button_unchecked_rounded,
+                                              color: isDefault
+                                                  ? const Color(0xFF0077E6)
+                                                  : const Color(0xFFCBD5E1),
                                               size: 22,
                                             ),
                                           ),
@@ -2161,18 +2464,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(14),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 13,
+                          horizontal: 16,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEFF6FF),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: const Color(0xFF0077E6).withValues(alpha: 0.35),
+                            color: const Color(
+                              0xFF0077E6,
+                            ).withValues(alpha: 0.35),
                           ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.add_circle_outline_rounded, size: 20, color: Color(0xFF0077E6)),
+                            const Icon(
+                              Icons.add_circle_outline_rounded,
+                              size: 20,
+                              color: Color(0xFF0077E6),
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Tambah Alamat Baru',
@@ -2299,7 +2611,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Navigator.pop(ctx);
                               _showAddressPickerSheet();
                             },
-                            icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFF64748B),
+                            ),
                             visualDensity: VisualDensity.compact,
                           ),
                         ],
@@ -2330,7 +2645,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     Icon(
                                       cat['icon'] as IconData,
                                       size: 15,
-                                      color: isSel ? Colors.white : const Color(0xFF475569),
+                                      color: isSel
+                                          ? Colors.white
+                                          : const Color(0xFF475569),
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
@@ -2338,7 +2655,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
-                                        color: isSel ? Colors.white : const Color(0xFF475569),
+                                        color: isSel
+                                            ? Colors.white
+                                            : const Color(0xFF475569),
                                       ),
                                     ),
                                   ],
@@ -2349,7 +2668,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                   side: BorderSide(
-                                    color: isSel ? const Color(0xFF0077E6) : const Color(0xFFE2E8F0),
+                                    color: isSel
+                                        ? const Color(0xFF0077E6)
+                                        : const Color(0xFFE2E8F0),
                                   ),
                                 ),
                                 showCheckmark: false,
@@ -2358,8 +2679,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     setSheetState(() {
                                       selectedCategory = cat['name'] as String;
                                       if (labelController.text.isEmpty ||
-                                          categories.any((c) => c['name'] == labelController.text)) {
-                                        labelController.text = cat['name'] as String;
+                                          categories.any(
+                                            (c) =>
+                                                c['name'] ==
+                                                labelController.text,
+                                          )) {
+                                        labelController.text =
+                                            cat['name'] as String;
                                       }
                                     });
                                   }
@@ -2383,24 +2709,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 6),
                       TextField(
                         controller: labelController,
-                        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF0F172A)),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: const Color(0xFF0F172A),
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Contoh: Rumah, Kos Sukolilo, Kantor Cyber',
-                          hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: const Color(0xFF94A3B8),
+                          ),
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE2E8F0),
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE2E8F0),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF0077E6),
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -2419,24 +2761,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       TextField(
                         controller: addressController,
                         maxLines: 2,
-                        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF0F172A)),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: const Color(0xFF0F172A),
+                        ),
                         decoration: InputDecoration(
-                          hintText: 'Nama jalan, nomor rumah/blok, RT/RW, kelurahan, kota',
-                          hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                          hintText:
+                              'Nama jalan, nomor rumah/blok, RT/RW, kelurahan, kota',
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: const Color(0xFF94A3B8),
+                          ),
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE2E8F0),
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE2E8F0),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF0077E6),
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -2454,24 +2813,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 6),
                       TextField(
                         controller: noteController,
-                        style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF0F172A)),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: const Color(0xFF0F172A),
+                        ),
                         decoration: InputDecoration(
-                          hintText: 'Contoh: Pagar hitam, titip satpam, samping minimarket',
-                          hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                          hintText:
+                              'Contoh: Pagar hitam, titip satpam, samping minimarket',
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: const Color(0xFF94A3B8),
+                          ),
                           filled: true,
                           fillColor: const Color(0xFFF8FAFC),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE2E8F0),
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE2E8F0),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF0077E6),
+                              width: 1.5,
+                            ),
                           ),
                         ),
                       ),
@@ -2479,7 +2855,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       // Switch Jadikan Alamat Utama
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(12),
@@ -2490,7 +2869,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.star_rounded, size: 20, color: Color(0xFFF59E0B)),
+                                const Icon(
+                                  Icons.star_rounded,
+                                  size: 20,
+                                  color: Color(0xFFF59E0B),
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Jadikan sebagai alamat utama',
@@ -2526,7 +2909,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             final note = noteController.text.trim();
 
                             if (label.isEmpty) {
-                              _showToast('Nama / label alamat tidak boleh kosong');
+                              _showToast(
+                                'Nama / label alamat tidak boleh kosong',
+                              );
                               return;
                             }
                             if (address.isEmpty) {
@@ -2612,16 +2997,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.pop(ctx);
               _showAddressPickerSheet();
             },
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
-            child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF64748B),
+            ),
+            child: Text(
+              'Batal',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
               setState(() {
                 _addresses.remove(addressItem);
-                if (_primaryAddress.contains(addressItem['label']!) && _addresses.isNotEmpty) {
-                  _primaryAddress = '${_addresses.first['label']!} • ${_addresses.first['address']!}';
+                if (_primaryAddress.contains(addressItem['label']!) &&
+                    _addresses.isNotEmpty) {
+                  _primaryAddress =
+                      '${_addresses.first['label']!} • ${_addresses.first['address']!}';
                   _addresses.first['isDefault'] = 'true';
                 }
               });
@@ -2633,9 +3025,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               backgroundColor: const Color(0xFFDC2626),
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: Text('Hapus', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+            child: Text(
+              'Hapus',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -2655,7 +3052,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
           titlePadding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
           contentPadding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
           actionsPadding: const EdgeInsets.fromLTRB(22, 0, 22, 18),
@@ -2744,7 +3143,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFC),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -2755,7 +3157,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF0077E6),
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
@@ -2803,7 +3208,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       filled: true,
                       fillColor: const Color(0xFFF8FAFC),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -2814,7 +3222,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF0077E6),
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
@@ -2825,7 +3236,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           actions: [
             TextButton(
               onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF64748B),
+              ),
               child: Text(
                 'Batal',
                 style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
@@ -2847,7 +3260,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         return;
                       }
                       if (oldPass == newPass) {
-                        _showToast('Kata sandi baru tidak boleh sama dengan kata sandi lama');
+                        _showToast(
+                          'Kata sandi baru tidak boleh sama dengan kata sandi lama',
+                        );
                         return;
                       }
 
@@ -2870,8 +3285,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: const Color(0xFF0077E6),
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 11,
+                ),
               ),
               child: isSubmitting
                   ? const SizedBox(
@@ -2884,7 +3304,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     )
                   : Text(
                       'Perbarui',
-                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
             ),
           ],
@@ -2902,7 +3324,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             'Konfirmasi Keluar',
             style: GoogleFonts.plusJakartaSans(
@@ -2913,13 +3337,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           content: Text(
             'Apakah Anda yakin ingin keluar dari akun Washora Anda?',
-            style: GoogleFonts.plusJakartaSans(fontSize: 13, color: const Color(0xFF64748B)),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: const Color(0xFF64748B),
+            ),
           ),
           actions: [
             TextButton(
               onPressed: isLoggingOut ? null : () => Navigator.pop(ctx),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
-              child: Text('Batal', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600)),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF64748B),
+              ),
+              child: Text(
+                'Batal',
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+              ),
             ),
             ElevatedButton(
               onPressed: isLoggingOut
@@ -2942,7 +3374,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (!mounted) return;
                       Navigator.pushAndRemoveUntil(
                         context,
-                        MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const RoleSelectionScreen(),
+                        ),
                         (route) => false,
                       );
                     },
@@ -2950,7 +3384,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: const Color(0xFFDC2626),
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: isLoggingOut
                   ? const SizedBox(
@@ -2961,7 +3397,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : Text('Keluar', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+                  : Text(
+                      'Keluar',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
             ),
           ],
         ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_config.dart';
+import 'services/address_service.dart';
 import 'screens/loading_screen.dart';
 
 void main() async {
@@ -17,6 +18,7 @@ void main() async {
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
+  await AddressService.init();
   runApp(const MyApp());
 }
 

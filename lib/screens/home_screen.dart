@@ -10,6 +10,7 @@ import 'shop_detail_screen.dart';
 import 'notifications_screen.dart';
 import 'order_history_screen.dart';
 import 'profile_screen.dart';
+import '../services/address_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -125,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    AddressService.init();
     _promoPageController = PageController(viewportFraction: 0.90);
     _entranceController = AnimationController(
       vsync: this,
@@ -570,84 +572,119 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildLocationBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
-              spreadRadius: -1,
-            ),
-            BoxShadow(
-              color: const Color(0xFF0077E6).withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.location_on_rounded,
-                color: Color(0xFF0077E6),
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'LOKASI ANTAR / JEMPUT',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF94A3B8),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
+      child: ValueListenableBuilder<AddressItem>(
+        valueListenable: AddressService.currentAddressNotifier,
+        builder: (context, currentAddress, _) {
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => AddressService.showAddressPickerSheet(context),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                      spreadRadius: -1,
                     ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    'Jl. Merdeka No. 12, Menteng, Jakarta Pusat',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF0F172A),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                    BoxShadow(
+                      color: const Color(0xFF0077E6).withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Ubah',
-                style: GoogleFonts.plusJakartaSans(
-                  color: const Color(0xFF0077E6),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEFF6FF),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        currentAddress.icon,
+                        color: const Color(0xFF0077E6),
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'LOKASI ANTAR / JEMPUT',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: const Color(0xFF94A3B8),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  currentAddress.label,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: const Color(0xFF0077E6),
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            currentAddress.address,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: const Color(0xFF0F172A),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Ubah',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: const Color(0xFF0077E6),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
