@@ -13,8 +13,6 @@ import '../services/evidence_service.dart';
 import '../services/supabase_service.dart';
 import 'owner_claims_screen.dart';
 import 'owner_evidence_sheets.dart';
-import 'partner/partner_profile_screen.dart';
-import 'partner/partner_revenue_screen.dart';
 import 'role_selection_screen.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
@@ -2346,10 +2344,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 title: 'Report',
                 icon: Icons.insert_chart_outlined_rounded,
                 color: const Color(0xFF2563EB),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PartnerRevenueScreen()),
-                ),
+                onTap: () => _showSnack('Laporan Omzet & Rekap Harian — segera hadir'),
               ),
               _buildMenuItem(
                 title: 'Customer',
@@ -2373,10 +2368,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 title: 'Pengaturan',
                 icon: Icons.tune_rounded,
                 color: const Color(0xFF64748B),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PartnerProfileScreen()),
-                ),
+                onTap: () => _showSnack('Pengaturan Tarif & Outlet — segera hadir'),
               ),
             ],
           ),
