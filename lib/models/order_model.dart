@@ -46,6 +46,21 @@ class OrderModel {
   final String? customerPhone;
   final String deliveryType; // 'pickup' (dijemput kurir) atau 'dropoff' (antar sendiri)
 
+  // Bukti penerimaan & serah terima (diisi lewat alur foto/kode, lihat supabase_bukti_klaim.sql)
+  final String? intakeNote;
+  final int? intakeItemCount;
+  final DateTime? intakeAt;
+  final DateTime? receivedAt;
+  final String? receivedBy; // 'code' | 'customer' | 'walkin' | 'auto'
+
+  /// Batas waktu pelanggan boleh mengajukan klaim kerusakan setelah menerima cucian
+  static const Duration claimWindow = Duration(hours: 48);
+
+  bool get canClaim =>
+      status == 'delivered' &&
+      receivedAt != null &&
+      DateTime.now().isBefore(receivedAt!.add(claimWindow));
+
   /// Urutan tahapan proses, dipakai halaman pelacakan pelanggan
   static const List<String> statusFlow = ['pending', 'washing', 'drying', 'done', 'delivered'];
 
@@ -81,6 +96,11 @@ class OrderModel {
     this.customerName,
     this.customerPhone,
     this.deliveryType = 'pickup',
+    this.intakeNote,
+    this.intakeItemCount,
+    this.intakeAt,
+    this.receivedAt,
+    this.receivedBy,
   });
 
   factory OrderModel.fromMap(Map<String, dynamic> data, String id) {
@@ -107,6 +127,11 @@ class OrderModel {
       customerName: data['customer_name'],
       customerPhone: data['customer_phone'],
       deliveryType: data['delivery_type'] ?? 'pickup',
+      intakeNote: data['intake_note'],
+      intakeItemCount: data['intake_item_count'],
+      intakeAt: data['intake_at'] != null ? DateTime.parse(data['intake_at']).toLocal() : null,
+      receivedAt: data['received_at'] != null ? DateTime.parse(data['received_at']).toLocal() : null,
+      receivedBy: data['received_by'],
     );
   }
 

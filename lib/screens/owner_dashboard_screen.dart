@@ -5,10 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../models/evidence_models.dart';
 import '../models/order_model.dart';
 import '../models/shop_model.dart';
 import '../services/auth_service.dart';
+import '../services/evidence_service.dart';
 import '../services/supabase_service.dart';
+import 'owner_claims_screen.dart';
+import 'owner_evidence_sheets.dart';
 import 'partner/partner_profile_screen.dart';
 import 'partner/partner_revenue_screen.dart';
 import 'role_selection_screen.dart';
@@ -31,6 +35,10 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   ShopModel? _shop;
   List<OrderModel> _orders = [];
   StreamSubscription<List<OrderModel>>? _ordersSub;
+
+  // Klaim kerusakan dari pelanggan (realtime) — ditampilkan sebagai banner di atas Recent Order
+  final EvidenceService _evidenceService = EvidenceService();
+  Stream<List<DamageClaim>>? _claimsStream;
 
   // Realtime Supabase tidak mengirim event DELETE ke stream yang difilter
   // (.eq('shop_id', ...)), jadi pesanan yang dihapus dicatat di sini agar
@@ -126,6 +134,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   }
 
   void _listenOrders(ShopModel shop) {
+    _claimsStream ??= _evidenceService.getShopClaims(shop.id);
     _reconnectTimer?.cancel();
     _ordersSub?.cancel();
     _ordersSub = _supabaseService.getShopOrders(shop.id).listen(
@@ -929,6 +938,33 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       onTap: () async {
         if (isCurrent) return;
         final messenger = ScaffoldMessenger.of(context);
+
+        // Serah terima: status "Diantar" hanya lewat kode pelanggan + foto
+        if (status == 'delivered') {
+          if (ctx.mounted) Navigator.pop(ctx);
+          if (order.status != 'done') {
+            messenger.showSnackBar(const SnackBar(
+              content: Text('Ubah status ke "Selesai" dulu sebelum serah terima ke pelanggan.'),
+            ));
+            return;
+          }
+          final ok = await showHandoverSheet(context, order);
+          if (ok) {
+            messenger.showSnackBar(const SnackBar(
+              content: Text('Serah terima tercatat. Pesanan diterima pelanggan.'),
+              backgroundColor: Color(0xFF10B981),
+            ));
+          }
+          return;
+        }
+
+        // Bukti penerimaan: foto kondisi wajib sebelum cucian mulai diproses
+        if (order.status == 'pending' && status != 'cancelled' && order.intakeAt == null) {
+          if (ctx.mounted) Navigator.pop(ctx);
+          final ok = await showIntakeSheet(context, order);
+          if (!ok) return;
+        }
+
         final success = await _supabaseService.updateOrderStatus(order.id, status);
         if (ctx.mounted) Navigator.pop(ctx);
         messenger.showSnackBar(
@@ -2518,12 +2554,60 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
+  Widget _buildClaimsBanner() {
+    final shop = _shop;
+    if (shop == null || _claimsStream == null) return const SizedBox.shrink();
+    return StreamBuilder<List<DamageClaim>>(
+      stream: _claimsStream,
+      builder: (context, snap) {
+        final claims = snap.data ?? const <DamageClaim>[];
+        if (claims.isEmpty) return const SizedBox.shrink();
+        final pending = claims.where((c) => c.isPending).length;
+        final urgent = pending > 0;
+        final color = urgent ? const Color(0xFFD97706) : const Color(0xFF64748B);
+        return InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => OwnerClaimsScreen(shopId: shop.id)),
+          ),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: urgent ? const Color(0xFFFFFBEB) : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: urgent ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                Icon(urgent ? Icons.report_problem_rounded : Icons.fact_check_outlined, color: color, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    urgent
+                        ? '$pending klaim kerusakan menunggu verifikasi'
+                        : 'Riwayat klaim kerusakan (${claims.length})',
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: color),
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: color),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildRecentOrderSection(List<OrderModel> orders) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildClaimsBanner(),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

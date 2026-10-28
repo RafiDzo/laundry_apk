@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Kamera dipakai untuk memotret kondisi cucian sebagai bukti penerimaan, serah terima, dan klaim kerusakan.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Galeri dipakai untuk melampirkan foto bukti kondisi cucian.</string>
 </dict>
 </plist>

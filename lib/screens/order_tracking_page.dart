@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 import '../models/order_model.dart';
 import '../services/supabase_service.dart';
+import '../widgets/order_evidence_section.dart';
 import 'home_screen.dart';
 
 class OrderTrackingPage extends StatefulWidget {
@@ -158,10 +159,11 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                                   ),
                                   const SizedBox(height: 16),
                                   _staggered(index: 1, child: _buildOutletCard(_order!)),
-                                  if (!_order!.isCancelled) ...[
-                                    const SizedBox(height: 16),
+                                  const SizedBox(height: 16),
+                                  // Kode serah terima, foto bukti & klaim kerusakan
+                                  OrderEvidenceSection(order: _order!),
+                                  if (!_order!.isCancelled)
                                     _staggered(index: 2, child: _buildLiveProgressCard(_order!)),
-                                  ],
                                 ],
                               ),
                             ),

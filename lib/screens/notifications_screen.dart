@@ -28,6 +28,17 @@ const _border = Color(0xFFE2E8F0);
       return (Icons.check_circle_rounded, const Color(0xFF7C3AED));
     case 'cancelled':
       return (Icons.cancel_rounded, const Color(0xFFDC2626));
+    // Notifikasi klaim kerusakan (status = 'claim_<status klaim>')
+    case 'claim_pending':
+      return (Icons.assignment_late_outlined, const Color(0xFFD97706));
+    case 'claim_approved':
+    case 'claim_appeal_approved':
+      return (Icons.verified_rounded, const Color(0xFF16A34A));
+    case 'claim_rejected':
+    case 'claim_appeal_rejected':
+      return (Icons.gpp_bad_outlined, const Color(0xFFDC2626));
+    case 'claim_appealed':
+      return (Icons.gavel_rounded, const Color(0xFF7C3AED));
     default:
       return (Icons.receipt_long_rounded, const Color(0xFF64748B));
   }
