@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Wajib untuk build rilis: Supabase, peta, Google Fonts & unggah foto butuh internet
+         (build debug menambahkannya otomatis, build rilis tidak) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="laundry_apk"
         android:name="${applicationName}"
@@ -40,6 +43,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- url_launcher: buka link https (mis. wa.me untuk Kirim WA Nota) di Android 11+ -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
         </intent>
     </queries>
 </manifest>

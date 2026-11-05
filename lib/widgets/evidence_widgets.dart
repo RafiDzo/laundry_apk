@@ -245,10 +245,19 @@ String evidenceErrorMessage(Object error) {
     return 'Pesanan sudah diterima pelanggan dan tidak bisa diubah lagi.';
   }
   if (msg.contains('row-level security') || msg.contains('42501')) {
-    return 'Akses ditolak. Pastikan SQL supabase_bukti_klaim.sql sudah dijalankan.';
+    return 'Akses ditolak oleh database. Pastikan login dengan akun yang benar, '
+        'lalu coba lagi. (Detail: ${_shortError(msg)})';
   }
   if (msg.contains('Bucket not found')) {
     return 'Penyimpanan foto belum dibuat. Jalankan SQL supabase_bukti_klaim.sql.';
   }
   return 'Terjadi kesalahan: $msg';
 }
+
+/// True jika error berasal dari penolakan izin / RLS database
+bool isAccessDeniedError(Object error) {
+  final msg = error.toString();
+  return msg.contains('row-level security') || msg.contains('42501') || msg.contains('Unauthorized');
+}
+
+String _shortError(String msg) => msg.length > 140 ? '${msg.substring(0, 140)}…' : msg;

@@ -39,6 +39,31 @@ class EvidenceService {
     }
   }
 
+  /// Dipanggil saat database menolak akses: cari tahu penyebab sebenarnya.
+  /// Mengembalikan pesan untuk mitra, atau null jika sesi & outlet sudah benar.
+  Future<String?> diagnoseOwnerAccess(String shopId) async {
+    final user = _db.auth.currentUser;
+    if (user == null) return 'Sesi login habis. Silakan logout lalu login ulang.';
+    try {
+      final row = await _db
+          .from('shops')
+          .select('id')
+          .eq('id', shopId)
+          .eq('owner_id', user.id)
+          .maybeSingle();
+      if (row == null) {
+        return 'Akses ditolak: akun yang sedang login (${user.email ?? user.id}) '
+            'bukan pemilik outlet pesanan ini. Jika Anda login akun pelanggan di tab lain '
+            'pada browser yang sama, sesi mitra ikut tertimpa — logout lalu login ulang '
+            'sebagai mitra (pakai jendela Incognito untuk akun pelanggan).';
+      }
+      return null;
+    } catch (e) {
+      print('Error diagnoseOwnerAccess: $e');
+      return null;
+    }
+  }
+
   String _guessMime(String name) {
     final lower = name.toLowerCase();
     if (lower.endsWith('.png')) return 'image/png';
