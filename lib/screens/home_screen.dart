@@ -1,7 +1,9 @@
 import 'dart:async';
 import '../widgets/quick_snackbar.dart';
 import '../widgets/shop_branding.dart';
+import 'promo_screen.dart';
 import 'package:flutter/material.dart';
+import '../widgets/washora_logo.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
@@ -46,6 +48,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   final List<_PromoCard> _promos = [
     const _PromoCard(
+      promoId: 'first50',
       badge: 'PROMO SPESIAL',
       title: 'Diskon 50%',
       subtitle: 'Untuk order cuci & dry clean pertama kamu',
@@ -54,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen>
       buttonTextColor: Color(0xFF0066CC),
     ),
     const _PromoCard(
+      promoId: 'ongkir',
       badge: 'GRATIS ONGKIR',
       title: 'Antar Jemput Bebas Biaya',
       subtitle: 'Minimal pemesanan Rp 50.000 se-area',
@@ -62,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen>
       buttonTextColor: Color(0xFF0284C7),
     ),
     const _PromoCard(
+      promoId: 'doublepoin',
       badge: 'MEMBER REWARD',
       title: 'Double Point Cuci',
       subtitle: 'Kumpulkan poin lebih cepat tiap weekend',
@@ -97,8 +102,22 @@ class _HomeScreenState extends State<HomeScreen>
           'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=500&auto=format&fit=crop&q=80',
       pricePerKg: 10000,
       services: [
-        ServiceModel(id: 'd1s1', name: 'Cuci Kiloan', description: 'Regular wash & fold', price: 10000, unit: '/ kg', iconName: 'local_laundry_service'),
-        ServiceModel(id: 'd1s2', name: 'Cuci Kilat Express', description: 'Selesai dalam 4 jam', price: 25000, unit: '/ kg', iconName: 'bolt'),
+        ServiceModel(
+          id: 'd1s1',
+          name: 'Cuci Kiloan',
+          description: 'Regular wash & fold',
+          price: 10000,
+          unit: '/ kg',
+          iconName: 'local_laundry_service',
+        ),
+        ServiceModel(
+          id: 'd1s2',
+          name: 'Cuci Kilat Express',
+          description: 'Selesai dalam 4 jam',
+          price: 25000,
+          unit: '/ kg',
+          iconName: 'bolt',
+        ),
       ],
     ),
     ShopModel(
@@ -113,8 +132,22 @@ class _HomeScreenState extends State<HomeScreen>
           'https://images.unsplash.com/photo-1521656693074-0ef32e80a5d5?w=500&auto=format&fit=crop&q=80',
       pricePerKg: 12000,
       services: [
-        ServiceModel(id: 'd2s1', name: 'Cuci Kiloan Hemat', description: 'Regular wash 3 hari', price: 8500, unit: '/ kg', iconName: 'local_laundry_service'),
-        ServiceModel(id: 'd2s2', name: 'Setrika Saja', description: 'Layanan setrika rapi', price: 6000, unit: '/ kg', iconName: 'iron'),
+        ServiceModel(
+          id: 'd2s1',
+          name: 'Cuci Kiloan Hemat',
+          description: 'Regular wash 3 hari',
+          price: 8500,
+          unit: '/ kg',
+          iconName: 'local_laundry_service',
+        ),
+        ServiceModel(
+          id: 'd2s2',
+          name: 'Setrika Saja',
+          description: 'Layanan setrika rapi',
+          price: 6000,
+          unit: '/ kg',
+          iconName: 'iron',
+        ),
       ],
     ),
     ShopModel(
@@ -129,8 +162,22 @@ class _HomeScreenState extends State<HomeScreen>
           'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=500&auto=format&fit=crop&q=80',
       pricePerKg: 9000,
       services: [
-        ServiceModel(id: 'd3s1', name: 'Cuci Kiloan Premium', description: 'Deterjen premium', price: 12000, unit: '/ kg', iconName: 'local_laundry_service'),
-        ServiceModel(id: 'd3s2', name: 'Cuci Satuan', description: 'Jas, gaun, boneka, dll.', price: 35000, unit: '/ pcs', iconName: 'dry_cleaning'),
+        ServiceModel(
+          id: 'd3s1',
+          name: 'Cuci Kiloan Premium',
+          description: 'Deterjen premium',
+          price: 12000,
+          unit: '/ kg',
+          iconName: 'local_laundry_service',
+        ),
+        ServiceModel(
+          id: 'd3s2',
+          name: 'Cuci Satuan',
+          description: 'Jas, gaun, boneka, dll.',
+          price: 35000,
+          unit: '/ pcs',
+          iconName: 'dry_cleaning',
+        ),
       ],
     ),
   ];
@@ -155,29 +202,33 @@ class _HomeScreenState extends State<HomeScreen>
     if (userId == null) return;
 
     _notifSub?.cancel();
-    _notifSub = _supabaseService.getUserNotifications(userId).listen(
-      (notifs) {
-        if (!mounted) return;
-        // Tampilkan pesan singkat untuk notifikasi baru yang masuk saat layar ini terbuka
-        final seen = _seenNotifIds;
-        if (seen != null) {
-          final fresh = notifs.where((n) => !n.isRead && !seen.contains(n.id)).toList();
-          if (fresh.isNotEmpty) _showNotificationToast(fresh.first);
-        }
-        setState(() {
-          _seenNotifIds = notifs.map((n) => n.id).toSet();
-          _unreadNotifs = notifs.where((n) => !n.isRead).length;
-        });
-      },
-      onError: (e) {
-        print('Error stream notifikasi: $e');
-        // Koneksi realtime terputus: sambung ulang otomatis
-        _notifReconnectTimer?.cancel();
-        _notifReconnectTimer = Timer(const Duration(seconds: 5), () {
-          if (mounted) _subscribeNotifications();
-        });
-      },
-    );
+    _notifSub = _supabaseService
+        .getUserNotifications(userId)
+        .listen(
+          (notifs) {
+            if (!mounted) return;
+            // Tampilkan pesan singkat untuk notifikasi baru yang masuk saat layar ini terbuka
+            final seen = _seenNotifIds;
+            if (seen != null) {
+              final fresh = notifs
+                  .where((n) => !n.isRead && !seen.contains(n.id))
+                  .toList();
+              if (fresh.isNotEmpty) _showNotificationToast(fresh.first);
+            }
+            setState(() {
+              _seenNotifIds = notifs.map((n) => n.id).toSet();
+              _unreadNotifs = notifs.where((n) => !n.isRead).length;
+            });
+          },
+          onError: (e) {
+            print('Error stream notifikasi: $e');
+            // Koneksi realtime terputus: sambung ulang otomatis
+            _notifReconnectTimer?.cancel();
+            _notifReconnectTimer = Timer(const Duration(seconds: 5), () {
+              if (mounted) _subscribeNotifications();
+            });
+          },
+        );
   }
 
   void _showNotificationToast(NotificationModel notif) {
@@ -196,7 +247,10 @@ class _HomeScreenState extends State<HomeScreen>
                 children: [
                   Text(
                     notif.title,
-                    style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   Text(
                     notif.body,
@@ -264,14 +318,19 @@ class _HomeScreenState extends State<HomeScreen>
       case 1: // Kilat Express — ada layanan dengan kata kunci express/kilat/cepat di nama
         return services.any((s) {
           final n = s.name.toLowerCase();
-          return n.contains('express') || n.contains('kilat') || n.contains('cepat') || n.contains('ekspress');
+          return n.contains('express') ||
+              n.contains('kilat') ||
+              n.contains('cepat') ||
+              n.contains('ekspress');
         });
       case 2: // Satuan — ada layanan dengan unit per pcs
         return services.any((s) => s.unit.toLowerCase().contains('pcs'));
       case 3: // Setrika Only — ada layanan setrika
         return services.any((s) {
           final n = s.name.toLowerCase();
-          return n.contains('setrika') || n.contains('iron') || s.iconName.toLowerCase().contains('iron');
+          return n.contains('setrika') ||
+              n.contains('iron') ||
+              s.iconName.toLowerCase().contains('iron');
         });
       default:
         return true;
@@ -294,7 +353,17 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
+  void _openPromos({String? promoId, bool plans = false}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PromoScreen(openPromoId: promoId, scrollToPlans: plans),
+      ),
+    );
+  }
+
   void _startPromoAutoScroll() {
+    _promoTimer?.cancel();
     _promoTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (_promoPageController.hasClients) {
         final nextPage = (_currentPromoPage + 1) % _promos.length;
@@ -506,10 +575,8 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.local_laundry_service_rounded,
-                  color: Colors.white,
-                  size: 24,
+                child: const Center(
+                  child: WashoraLogo(size: 28, color: Colors.white),
                 ),
               ),
               const SizedBox(width: 12),
@@ -575,8 +642,12 @@ class _HomeScreenState extends State<HomeScreen>
                     ],
                   ),
                   child: Icon(
-                    _unreadNotifs > 0 ? Icons.notifications_active_rounded : Icons.notifications_outlined,
-                    color: _unreadNotifs > 0 ? const Color(0xFF0077E6) : const Color(0xFF334155),
+                    _unreadNotifs > 0
+                        ? Icons.notifications_active_rounded
+                        : Icons.notifications_outlined,
+                    color: _unreadNotifs > 0
+                        ? const Color(0xFF0077E6)
+                        : const Color(0xFF334155),
                     size: 22,
                   ),
                 ),
@@ -586,7 +657,10 @@ class _HomeScreenState extends State<HomeScreen>
                     top: -4,
                     right: -4,
                     child: Container(
-                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
                       padding: const EdgeInsets.symmetric(horizontal: 5),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEF4444),
@@ -628,7 +702,10 @@ class _HomeScreenState extends State<HomeScreen>
               onTap: () => AddressService.showAddressPickerSheet(context),
               borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -712,7 +789,10 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(8),
@@ -897,134 +977,200 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildPromoCarousel() {
     return Column(
       children: [
-        SizedBox(
-          height: 156,
-          child: PageView.builder(
-            controller: _promoPageController,
-            onPageChanged: (idx) => setState(() => _currentPromoPage = idx),
-            itemCount: _promos.length,
-            physics: const BouncingScrollPhysics(),
-            itemBuilder: (context, index) {
-              final promo = _promos[index];
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: promo.gradientColors,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: promo.gradientColors.first.withValues(alpha: 0.36),
-                      blurRadius: 22,
-                      offset: const Offset(0, 9),
-                      spreadRadius: -2,
-                    ),
-                    BoxShadow(
-                      color: promo.gradientColors.last.withValues(alpha: 0.20),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.local_offer_rounded,
+                color: Color(0xFF0077E6),
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Promo Spesial',
+                style: GoogleFonts.plusJakartaSans(
+                  color: const Color(0xFF0F172A),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
                 ),
-                child: Stack(
-                  children: [
-                    // Ambient watermark curves
-                    Positioned(
-                      right: -20,
-                      bottom: -20,
-                      child: Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.1),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () => _openPromos(),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Lihat Semua',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: const Color(0xFF0077E6),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Color(0xFF0077E6),
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 156,
+          // Hentikan auto-scroll selama pengguna menggeser, lanjutkan sesudahnya
+          child: Listener(
+            onPointerDown: (_) => _promoTimer?.cancel(),
+            onPointerUp: (_) => _startPromoAutoScroll(),
+            onPointerCancel: (_) => _startPromoAutoScroll(),
+            child: PageView.builder(
+              controller: _promoPageController,
+              onPageChanged: (idx) => setState(() => _currentPromoPage = idx),
+              itemCount: _promos.length,
+              physics: const BouncingScrollPhysics(),
+              itemBuilder: (context, index) {
+                final promo = _promos[index];
+                return GestureDetector(
+                  onTap: () => _openPromos(promoId: promo.promoId),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: promo.gradientColors,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: promo.gradientColors.first.withValues(
+                            alpha: 0.36,
+                          ),
+                          blurRadius: 22,
+                          offset: const Offset(0, 9),
+                          spreadRadius: -2,
+                        ),
+                        BoxShadow(
+                          color: promo.gradientColors.last.withValues(
+                            alpha: 0.20,
+                          ),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 4,
-                            ),
+                    child: Stack(
+                      children: [
+                        // Ambient watermark curves
+                        Positioned(
+                          right: -20,
+                          bottom: -20,
+                          child: Container(
+                            width: 140,
+                            height: 140,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.22),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              promo.badge,
-                              style: GoogleFonts.plusJakartaSans(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.8,
-                              ),
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.1),
                             ),
                           ),
-                          Column(
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(18),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                promo.title,
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.22),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  promo.badge,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.8,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                promo.subtitle,
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    promo.title,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: Colors.white,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    promo.subtitle,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.9,
+                                      ),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        blurRadius: 6,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    promo.buttonText,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: promo.buttonTextColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.1),
-                                    blurRadius: 6,
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                promo.buttonText,
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: promo.buttonTextColor,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            },
+                  ),
+                );
+              },
+            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -1057,95 +1203,101 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildSpecialOfferBanner() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF), // Soft clean blue tint
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFBFDBFE)),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0077E6).withValues(alpha: 0.09),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-            BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0077E6),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0077E6).withValues(alpha: 0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+      child: GestureDetector(
+        onTap: () => _openPromos(plans: true),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF6FF), // Soft clean blue tint
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFBFDBFE)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0077E6).withValues(alpha: 0.09),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
-              child: const Icon(
-                Icons.local_offer_rounded,
-                color: Colors.white,
-                size: 20,
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Paket Langganan Cuci Hemat',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF0F172A),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Hemat s.d 35% untuk paket keluarga per bulan',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: const Color(0xFF64748B),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF93C5FD)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0077E6).withValues(alpha: 0.12),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Text(
-                'Lihat Paket',
-                style: GoogleFonts.plusJakartaSans(
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
                   color: const Color(0xFF0077E6),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0077E6).withValues(alpha: 0.35),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.local_offer_rounded,
+                  color: Colors.white,
+                  size: 20,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Paket Langganan Cuci Hemat',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFF0F172A),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Hemat s.d 35% untuk paket keluarga per bulan',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFF64748B),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF93C5FD)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0077E6).withValues(alpha: 0.12),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  'Lihat Paket',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: const Color(0xFF0077E6),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1248,7 +1400,9 @@ class _HomeScreenState extends State<HomeScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.75),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+        ),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -1285,7 +1439,10 @@ class _HomeScreenState extends State<HomeScreen>
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                 child: Text(
                   'Pesananmu akan langsung diterima oleh outlet yang dipilih.',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF64748B)),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: const Color(0xFF64748B),
+                  ),
                 ),
               ),
               Flexible(
@@ -1322,15 +1479,23 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ),
                                   Text(
-                                    shop.address.isNotEmpty ? shop.address : shop.openHours,
+                                    shop.address.isNotEmpty
+                                        ? shop.address
+                                        : shop.openHours,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0xFF64748B)),
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      color: const Color(0xFF64748B),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
+                            const Icon(
+                              Icons.chevron_right_rounded,
+                              color: Color(0xFF94A3B8),
+                            ),
                           ],
                         ),
                       ),
@@ -1379,7 +1544,11 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           child: Column(
             children: [
-              const Icon(Icons.search_off_rounded, color: Color(0xFFCBD5E1), size: 48),
+              const Icon(
+                Icons.search_off_rounded,
+                color: Color(0xFFCBD5E1),
+                size: 48,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Tidak ada laundry dengan layanan "$filterLabel"',
@@ -1801,6 +1970,7 @@ class _HomeScreenState extends State<HomeScreen>
 //  DATA MODEL PROMO
 // ═══════════════════════════════════════════════════
 class _PromoCard {
+  final String promoId;
   final String badge;
   final String title;
   final String subtitle;
@@ -1809,6 +1979,7 @@ class _PromoCard {
   final Color buttonTextColor;
 
   const _PromoCard({
+    required this.promoId,
     required this.badge,
     required this.title,
     required this.subtitle,

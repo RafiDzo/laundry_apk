@@ -3,6 +3,7 @@ import '../widgets/quick_snackbar.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../widgets/washora_logo.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1905,11 +1906,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                             ],
                           ),
                           child: const Center(
-                            child: Icon(
-                              Icons.local_laundry_service_rounded,
-                              color: Color(0xFF0091EA),
-                              size: 26,
-                            ),
+                            child: WashoraLogo(size: 30),
                           ),
                         ),
                         const SizedBox(width: 12),

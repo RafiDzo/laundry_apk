@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/washora_logo.dart';
 import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
@@ -284,10 +285,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ],
           ),
           child: Center(
-            child: CustomPaint(
-              size: const Size(56, 56),
-              painter: _LaundryLogoPainter(),
-            ),
+            child: const WashoraLogo(size: 60, color: Colors.white),
           ),
         ),
 
@@ -604,108 +602,4 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
     );
   }
-}
-
-/// Custom painter for the laundry logo (same as login screen)
-class _LaundryLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    final scale = size.width / 100;
-
-    // Shirt shape
-    final shirtPath = Path();
-    shirtPath.moveTo(25 * scale, 32 * scale);
-    shirtPath.lineTo(35 * scale, 28 * scale);
-    shirtPath.lineTo(50 * scale, 33 * scale);
-    shirtPath.lineTo(65 * scale, 28 * scale);
-    shirtPath.lineTo(75 * scale, 32 * scale);
-    shirtPath.lineTo(70 * scale, 42 * scale);
-    shirtPath.lineTo(63 * scale, 38 * scale);
-    shirtPath.lineTo(65 * scale, 55 * scale);
-    shirtPath.cubicTo(
-      65 * scale,
-      55 * scale,
-      68 * scale,
-      62 * scale,
-      60 * scale,
-      62 * scale,
-    );
-    shirtPath.lineTo(40 * scale, 62 * scale);
-    shirtPath.cubicTo(
-      32 * scale,
-      62 * scale,
-      35 * scale,
-      55 * scale,
-      35 * scale,
-      55 * scale,
-    );
-    shirtPath.lineTo(37 * scale, 38 * scale);
-    shirtPath.lineTo(30 * scale, 42 * scale);
-    shirtPath.close();
-    canvas.drawPath(shirtPath, paint);
-
-    // Sparkle
-    final sparklePath = Path();
-    sparklePath.moveTo(58 * scale, 35 * scale);
-    sparklePath.lineTo(60 * scale, 31 * scale);
-    sparklePath.lineTo(62 * scale, 35 * scale);
-    sparklePath.lineTo(66 * scale, 37 * scale);
-    sparklePath.lineTo(62 * scale, 39 * scale);
-    sparklePath.lineTo(60 * scale, 43 * scale);
-    sparklePath.lineTo(58 * scale, 39 * scale);
-    sparklePath.lineTo(54 * scale, 37 * scale);
-    sparklePath.close();
-    canvas.drawPath(sparklePath, paint);
-
-    // Smile arc
-    final smilePath = Path();
-    smilePath.moveTo(22 * scale, 65 * scale);
-    smilePath.cubicTo(
-      22 * scale,
-      65 * scale,
-      30 * scale,
-      78 * scale,
-      50 * scale,
-      78 * scale,
-    );
-    smilePath.cubicTo(
-      70 * scale,
-      78 * scale,
-      78 * scale,
-      65 * scale,
-      78 * scale,
-      65 * scale,
-    );
-    smilePath.lineTo(76 * scale, 68 * scale);
-    smilePath.cubicTo(
-      76 * scale,
-      68 * scale,
-      68 * scale,
-      82 * scale,
-      50 * scale,
-      82 * scale,
-    );
-    smilePath.cubicTo(
-      32 * scale,
-      82 * scale,
-      24 * scale,
-      68 * scale,
-      24 * scale,
-      68 * scale,
-    );
-    smilePath.close();
-    canvas.drawPath(smilePath, paint);
-
-    // Bubbles
-    canvas.drawCircle(Offset(25 * scale, 55 * scale), 2.5 * scale, paint);
-    canvas.drawCircle(Offset(75 * scale, 52 * scale), 3 * scale, paint);
-    canvas.drawCircle(Offset(65 * scale, 70 * scale), 1.5 * scale, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/washora_logo.dart';
 import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'order_tracking_page.dart';
@@ -591,11 +592,7 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
                                 shape: BoxShape.circle,
                                 border: Border.all(color: const Color(0xFF0077E6), width: 1.5),
                               ),
-                              child: const Icon(
-                                Icons.local_laundry_service_rounded,
-                                size: 16,
-                                color: Color(0xFF0077E6),
-                              ),
+                              child: const WashoraLogo(size: 18),
                             ),
                           ],
                         ),

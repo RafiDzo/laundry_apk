@@ -1,3 +1,4 @@
+import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -30,6 +31,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Washora',
       debugShowCheckedModeBanner: false,
+      // Izinkan geser (carousel, list horizontal) dengan mouse & trackpad di web/desktop
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: PointerDeviceKind.values.toSet(),
+      ),
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
