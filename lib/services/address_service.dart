@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../widgets/quick_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -457,7 +458,7 @@ class AddressService {
                                         selectAddress(item);
                                         onSelected?.call(item);
                                         Navigator.pop(ctx);
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(context).showQuickSnackBar(
                                           SnackBar(
                                             content: Row(
                                               children: [
@@ -1019,7 +1020,7 @@ class AddressService {
                                   final note = noteController.text.trim();
 
                                   if (address.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    ScaffoldMessenger.of(context).showQuickSnackBar(
                                       SnackBar(
                                         content: Text(
                                           'Alamat lengkap tidak boleh kosong',
@@ -1044,7 +1045,7 @@ class AddressService {
                                   );
 
                                   Navigator.pop(ctx);
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  ScaffoldMessenger.of(context).showQuickSnackBar(
                                     SnackBar(
                                       content: Text(
                                         'Alamat "$label" berhasil disimpan!',

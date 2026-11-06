@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/evidence_models.dart';
 import '../models/order_model.dart';
@@ -71,7 +72,7 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
   List<OrderPhoto> _stage(String s) => _photos.where((p) => p.stage == s).toList();
 
   void _snack(String msg, {Color? color}) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showQuickSnackBar(
       SnackBar(content: Text(msg, style: GoogleFonts.plusJakartaSans(fontSize: 13)), backgroundColor: color),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/order_model.dart';
 import '../services/auth_service.dart';
@@ -56,13 +57,18 @@ Future<void> openActiveOrderTracking(BuildContext context) async {
 
   final active = orders.where((o) => o.isActive).toList();
   if (active.isEmpty) {
-    messenger.showSnackBar(
+    messenger.showQuickSnackBar(
       SnackBar(
         content: Text(
           'Tidak ada pesanan aktif yang sedang diproses.',
-          style: GoogleFonts.plusJakartaSans(fontSize: 13),
+          style: GoogleFonts.plusJakartaSans(fontSize: 12),
         ),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        elevation: 4,
+        duration: const Duration(seconds: 4),
         action: SnackBarAction(
           label: 'Riwayat',
           onPressed: () => Navigator.push(

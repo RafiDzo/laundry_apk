@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'order_detail_screen.dart';
@@ -20,6 +21,32 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
   String _selectedSpeed = 'Reguler'; // 'Reguler' or 'Express'
 
   late AnimationController _selectionPulseController;
+
+  // ── Reviews state ──────────────────────────────────────────────
+  final List<Map<String, dynamic>> _reviews = [
+    {
+      'name': 'Sarah Meliana',
+      'avatar': 'S',
+      'stars': 5,
+      'tag': 'Cuci Komplit • Kemarin',
+      'text': 'Wanginya tahan berhari-hari dan baju putih tidak kusam. Kurirnya ramah dan tepat waktu!',
+    },
+    {
+      'name': 'Budi Santoso',
+      'avatar': 'B',
+      'stars': 5,
+      'tag': 'Dry Clean Jas • 3 hari lalu',
+      'text': 'Hasil dry clean jas kantor sangat rapi dan tanpa kusut. Recommended buat yang butuh cepat.',
+    },
+    {
+      'name': 'Amanda Putri',
+      'avatar': 'A',
+      'stars': 4,
+      'tag': 'Bed Cover King • 5 hari lalu',
+      'text': 'Bed cover king dibungkus plastik tebal berzipper, harum dan bersih sampai ke sudutnya.',
+    },
+  ];
+  int _userRating = 5;
 
   // Diisi di initState: dari layanan outlet di database, atau katalog default
   late final List<Map<String, dynamic>> _allServices;
@@ -251,7 +278,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
 
   void _showToast(String message) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showQuickSnackBar(
       SnackBar(
         content: Text(
           message,
@@ -1342,31 +1369,265 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
   // ═══════════════════════════════════════════════
   //  7. CUSTOMER REVIEWS SECTION
   // ═══════════════════════════════════════════════
-  Widget _buildCustomerReviews() {
-    final reviews = [
-      {
-        'name': 'Sarah Meliana',
-        'avatar': 'S',
-        'stars': 5,
-        'tag': 'Cuci Komplit • Kemarin',
-        'text': 'Wanginya tahan berhari-hari dan baju putih tidak kusam. Kurirnya ramah dan tepat waktu!',
-      },
-      {
-        'name': 'Budi Santoso',
-        'avatar': 'B',
-        'stars': 5,
-        'tag': 'Dry Clean Jas • 3 hari lalu',
-        'text': 'Hasil dry clean jas kantor sangat rapi dan tanpa kusut. Recommended buat yang butuh cepat.',
-      },
-      {
-        'name': 'Amanda Putri',
-        'avatar': 'A',
-        'stars': 4,
-        'tag': 'Bed Cover King • 5 hari lalu',
-        'text': 'Bed cover king dibungkus plastik tebal berzipper, harum dan bersih sampai ke sudutnya.',
-      },
-    ];
+  void _showAddReviewDialog() {
+    final nameController = TextEditingController();
+    final tagController = TextEditingController();
+    final textController = TextEditingController();
+    int tempRating = _userRating;
 
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              title: Row(
+                children: [
+                  const Icon(Icons.rate_review_rounded, color: Color(0xFF0077E6), size: 22),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Tulis Ulasan',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    // Rating bintang
+                    Text(
+                      'Rating',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: List.generate(5, (i) {
+                        final filled = i < tempRating;
+                        return GestureDetector(
+                          onTap: () => setDialogState(() => tempRating = i + 1),
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Icon(
+                              filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                              color: filled ? const Color(0xFFFBBF24) : const Color(0xFFCBD5E1),
+                              size: 32,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 14),
+                    // Nama
+                    Text(
+                      'Nama Kamu',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: nameController,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'Contoh: Andi Pratama',
+                        hintStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: const Color(0xFFCBD5E1),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Layanan / waktu
+                    Text(
+                      'Layanan yang Dipakai',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: tagController,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'Contoh: Cuci Komplit • Kemarin',
+                        hintStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: const Color(0xFFCBD5E1),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Komentar
+                    Text(
+                      'Komentar',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: textController,
+                      maxLines: 3,
+                      style: GoogleFonts.plusJakartaSans(fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'Bagikan pengalaman laundry kamu...',
+                        hintStyle: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: const Color(0xFFCBD5E1),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        child: Text(
+                          'Batal',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final name = nameController.text.trim();
+                          final tag = tagController.text.trim();
+                          final text = textController.text.trim();
+                          if (name.isEmpty || text.isEmpty) {
+                            ScaffoldMessenger.of(ctx).showQuickSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Nama dan komentar wajib diisi',
+                                  style: GoogleFonts.plusJakartaSans(),
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: const Color(0xFFEF4444),
+                              ),
+                            );
+                            return;
+                          }
+                          final avatar = name.isNotEmpty ? name[0].toUpperCase() : '?';
+                          setState(() {
+                            _userRating = tempRating;
+                            _reviews.insert(0, {
+                              'name': name,
+                              'avatar': avatar,
+                              'stars': tempRating,
+                              'tag': tag.isNotEmpty ? tag : 'Baru saja',
+                              'text': text,
+                            });
+                          });
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showQuickSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Ulasan kamu berhasil ditambahkan! 🎉',
+                                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: const Color(0xFF10B981),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0077E6),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Kirim',
+                          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCustomerReviews() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1386,7 +1647,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
                 const Icon(Icons.star_rounded, size: 16, color: Color(0xFFD97706)),
                 const SizedBox(width: 4),
                 Text(
-                  '4.9 (128 ulasan)',
+                  '4.9 (${_reviews.length + 125} ulasan)',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -1398,15 +1659,18 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
           ],
         ),
         const SizedBox(height: 12),
+        // ── Scrollable review cards ─────────────────────────────
         SizedBox(
-          height: 140,
+          height: 148,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            itemCount: reviews.length,
+            clipBehavior: Clip.none,
+            padding: const EdgeInsets.only(right: 4),
+            itemCount: _reviews.length,
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              final r = reviews[index];
+              final r = _reviews[index];
               return Container(
                 width: 260,
                 padding: const EdgeInsets.all(14),
@@ -1416,7 +1680,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -1451,6 +1715,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
                                   fontWeight: FontWeight.w700,
                                   color: const Color(0xFF0F172A),
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                               Text(
                                 r['tag'] as String,
@@ -1458,11 +1723,13 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
                                   fontSize: 10,
                                   color: const Color(0xFF94A3B8),
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ),
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: List.generate(
                             r['stars'] as int,
                             (i) => const Icon(Icons.star_rounded, size: 13, color: Color(0xFFFBBF24)),
@@ -1477,9 +1744,9 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           color: const Color(0xFF475569),
-                          height: 1.35,
+                          height: 1.4,
                         ),
-                        maxLines: 3,
+                        maxLines: 4,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1487,6 +1754,28 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
                 ),
               );
             },
+          ),
+        ),
+        const SizedBox(height: 12),
+        // ── Tombol tulis ulasan ─────────────────────────────────
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _showAddReviewDialog,
+            icon: const Icon(Icons.edit_rounded, size: 16),
+            label: Text(
+              'Tulis Ulasan Kamu',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF0077E6),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              side: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+            ),
           ),
         ),
       ],

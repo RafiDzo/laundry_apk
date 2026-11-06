@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../widgets/email_confirmation_dialog.dart';
@@ -40,7 +41,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         email.isEmpty ||
         password.isEmpty ||
         confirmPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showQuickSnackBar(
         SnackBar(
           content: Row(
             children: [
@@ -64,7 +65,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     if (password != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showQuickSnackBar(
         SnackBar(
           content: Row(
             children: [
@@ -111,7 +112,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
 
       // Sign up successful — show message and navigate back to login
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showQuickSnackBar(
         SnackBar(
           content: Row(
             children: [
@@ -140,7 +141,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showQuickSnackBar(
         SnackBar(
           content: Row(
             children: [

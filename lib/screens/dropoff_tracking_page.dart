@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../widgets/quick_snackbar.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -131,7 +132,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
   void _copyToClipboard() {
     Clipboard.setData(ClipboardData(text: _cleanCode));
     setState(() => _copied = true);
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showQuickSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -295,7 +296,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
             ),
             IconButton(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showQuickSnackBar(
                   SnackBar(
                     content: Text(
                       'Butuh bantuan? Silakan hubungi kasir outlet atau layanan pelanggan Washora.',
@@ -883,7 +884,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(context).showQuickSnackBar(
                       SnackBar(
                         content: Text(
                           'Membuka navigasi Google Maps menuju $shopName...',
@@ -914,7 +915,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(context).showQuickSnackBar(
                       SnackBar(
                         content: Text(
                           'Menghubungi kasir $shopName...',
@@ -1234,7 +1235,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
           Expanded(
             child: ElevatedButton.icon(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showQuickSnackBar(
                   SnackBar(
                     content: Text(
                       'Menghubungkan ke layanan bantuan Washora...',

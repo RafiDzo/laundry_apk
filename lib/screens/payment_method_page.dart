@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'order_tracking_page.dart';
 import 'dropoff_tracking_page.dart';
@@ -167,7 +168,7 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showQuickSnackBar(
           SnackBar(
             content: Text(e is String ? e : 'Gagal membuat pesanan: $e'),
             backgroundColor: const Color(0xFFDC2626),

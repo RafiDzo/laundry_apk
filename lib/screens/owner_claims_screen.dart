@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/evidence_models.dart';
@@ -324,7 +325,7 @@ class _OwnerClaimDetailScreenState extends State<OwnerClaimDetailScreen> {
     );
 
     if (done == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showQuickSnackBar(
         SnackBar(content: Text(approve ? 'Klaim disetujui. Pelanggan sudah diberi tahu.' : 'Klaim ditolak. Pelanggan sudah diberi tahu.')),
       );
       _load();

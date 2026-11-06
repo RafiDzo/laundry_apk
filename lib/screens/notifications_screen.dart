@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/notification_model.dart';
 import '../services/auth_service.dart';
@@ -79,7 +80,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     final messenger = ScaffoldMessenger.of(context);
     if (notif.orderId == null) {
-      messenger.showSnackBar(
+      messenger.showQuickSnackBar(
         SnackBar(
           content: Text('Pesanan ini sudah dihapus oleh outlet.', style: GoogleFonts.plusJakartaSans(fontSize: 13)),
           behavior: SnackBarBehavior.floating,
@@ -94,7 +95,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     setState(() => _openingOrder = false);
 
     if (order == null) {
-      messenger.showSnackBar(
+      messenger.showQuickSnackBar(
         SnackBar(
           content: Text('Pesanan ini sudah tidak tersedia.', style: GoogleFonts.plusJakartaSans(fontSize: 13)),
           behavior: SnackBarBehavior.floating,

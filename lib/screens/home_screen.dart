@@ -1,10 +1,13 @@
 import 'dart:async';
+import '../widgets/quick_snackbar.dart';
+import '../widgets/shop_branding.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import '../models/notification_model.dart';
 import '../models/shop_model.dart';
+import '../models/service_model.dart';
 import '../services/seed_data.dart';
 import 'shop_detail_screen.dart';
 import 'notifications_screen.dart';
@@ -93,7 +96,10 @@ class _HomeScreenState extends State<HomeScreen>
       imageUrl:
           'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=500&auto=format&fit=crop&q=80',
       pricePerKg: 10000,
-      services: [],
+      services: [
+        ServiceModel(id: 'd1s1', name: 'Cuci Kiloan', description: 'Regular wash & fold', price: 10000, unit: '/ kg', iconName: 'local_laundry_service'),
+        ServiceModel(id: 'd1s2', name: 'Cuci Kilat Express', description: 'Selesai dalam 4 jam', price: 25000, unit: '/ kg', iconName: 'bolt'),
+      ],
     ),
     ShopModel(
       id: 'dummy-2',
@@ -106,7 +112,10 @@ class _HomeScreenState extends State<HomeScreen>
       imageUrl:
           'https://images.unsplash.com/photo-1521656693074-0ef32e80a5d5?w=500&auto=format&fit=crop&q=80',
       pricePerKg: 12000,
-      services: [],
+      services: [
+        ServiceModel(id: 'd2s1', name: 'Cuci Kiloan Hemat', description: 'Regular wash 3 hari', price: 8500, unit: '/ kg', iconName: 'local_laundry_service'),
+        ServiceModel(id: 'd2s2', name: 'Setrika Saja', description: 'Layanan setrika rapi', price: 6000, unit: '/ kg', iconName: 'iron'),
+      ],
     ),
     ShopModel(
       id: 'dummy-3',
@@ -119,7 +128,10 @@ class _HomeScreenState extends State<HomeScreen>
       imageUrl:
           'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=500&auto=format&fit=crop&q=80',
       pricePerKg: 9000,
-      services: [],
+      services: [
+        ServiceModel(id: 'd3s1', name: 'Cuci Kiloan Premium', description: 'Deterjen premium', price: 12000, unit: '/ kg', iconName: 'local_laundry_service'),
+        ServiceModel(id: 'd3s2', name: 'Cuci Satuan', description: 'Jas, gaun, boneka, dll.', price: 35000, unit: '/ pcs', iconName: 'dry_cleaning'),
+      ],
     ),
   ];
 
@@ -171,12 +183,12 @@ class _HomeScreenState extends State<HomeScreen>
   void _showNotificationToast(NotificationModel notif) {
     final (icon, color) = notificationStyle(notif.status);
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showQuickSnackBar(
       SnackBar(
         content: Row(
           children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -184,13 +196,13 @@ class _HomeScreenState extends State<HomeScreen>
                 children: [
                   Text(
                     notif.title,
-                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                   Text(
                     notif.body,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(fontSize: 12),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11),
                   ),
                 ],
               ),
@@ -199,8 +211,10 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 5),
+        duration: const Duration(seconds: 4),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         action: SnackBarAction(
           label: 'Lihat',
           textColor: Colors.white,
@@ -235,6 +249,39 @@ class _HomeScreenState extends State<HomeScreen>
         });
       }
     }
+  }
+
+  // ── Filter logika berdasarkan chip yang dipilih ──────────────────────────
+  /// Kembalikan apakah sebuah toko lolos filter aktif.
+  bool _shopPassesFilter(ShopModel shop) {
+    if (_selectedFilterIndex == 0) return true; // Semua
+
+    final services = shop.services;
+    // Jika toko tidak punya data layanan, loloskan hanya filter "Semua"
+    if (services.isEmpty) return false;
+
+    switch (_selectedFilterIndex) {
+      case 1: // Kilat Express — ada layanan dengan kata kunci express/kilat/cepat di nama
+        return services.any((s) {
+          final n = s.name.toLowerCase();
+          return n.contains('express') || n.contains('kilat') || n.contains('cepat') || n.contains('ekspress');
+        });
+      case 2: // Satuan — ada layanan dengan unit per pcs
+        return services.any((s) => s.unit.toLowerCase().contains('pcs'));
+      case 3: // Setrika Only — ada layanan setrika
+        return services.any((s) {
+          final n = s.name.toLowerCase();
+          return n.contains('setrika') || n.contains('iron') || s.iconName.toLowerCase().contains('iron');
+        });
+      default:
+        return true;
+    }
+  }
+
+  List<ShopModel> get _filteredShops {
+    final allShops = _shops.isNotEmpty ? _shops : _dummyShops;
+    if (_selectedFilterIndex == 0) return allShops;
+    return allShops.where(_shopPassesFilter).toList();
   }
 
   @override
@@ -1137,7 +1184,7 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
           Text(
-            'Lihat Semua (${_shops.length})',
+            'Lihat Semua (${_filteredShops.length})',
             style: GoogleFonts.plusJakartaSans(
               color: const Color(0xFF0077E6),
               fontSize: 12,
@@ -1162,7 +1209,12 @@ class _HomeScreenState extends State<HomeScreen>
             'address': shop.address,
             'rating': shop.rating,
             'distance': shop.distance,
-            'imageUrl': shop.imageUrl,
+            'imageUrl': ShopBranding.photoUrl(
+              id: shop.id,
+              name: shop.name,
+              imageUrl: shop.imageUrl,
+              width: 800,
+            ),
             'queueText': shop.queueText,
             'openHours': shop.openHours,
             'pricePerKg': shop.pricePerKg,
@@ -1177,7 +1229,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _showOutletPicker() async {
     final shops = _shops.where((s) => !s.id.startsWith('dummy-')).toList();
     if (shops.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showQuickSnackBar(
         SnackBar(
           content: Text(
             _isLoadingShops
@@ -1255,15 +1307,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.local_laundry_service_rounded, color: Color(0xFF0077E6)),
-                            ),
+                            ShopLogo(name: shop.name, size: 48),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -1319,7 +1363,47 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
 
-    final shopsToShow = _shops.isNotEmpty ? _shops : _dummyShops;
+    final shopsToShow = _filteredShops;
+
+    if (shopsToShow.isEmpty) {
+      // Tampilkan pesan kosong saat filter aktif tidak ada hasil
+      final filterLabel = _filters[_selectedFilterIndex];
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            children: [
+              const Icon(Icons.search_off_rounded, color: Color(0xFFCBD5E1), size: 48),
+              const SizedBox(height: 12),
+              Text(
+                'Tidak ada laundry dengan layanan "$filterLabel"',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Coba pilih kategori lain atau tekan "Semua".',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: const Color(0xFF94A3B8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return ListView.builder(
       shrinkWrap: true,
@@ -1377,24 +1461,41 @@ class _HomeScreenState extends State<HomeScreen>
                             ),
                           ],
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: Image.network(
-                            shop.imageUrl,
-                            width: 74,
-                            height: 74,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Container(
+                        child: SizedBox(
+                          width: 74,
+                          height: 74,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: Image.network(
+                                  ShopBranding.photoUrl(
+                                    id: shop.id,
+                                    name: shop.name,
+                                    imageUrl: shop.imageUrl,
+                                  ),
                                   width: 74,
                                   height: 74,
-                                  color: const Color(0xFFEFF6FF),
-                                  child: const Icon(
-                                    Icons.local_laundry_service_rounded,
-                                    color: Color(0xFF0077E6),
-                                    size: 28,
-                                  ),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      ShopLogo(name: shop.name, size: 74),
                                 ),
+                              ),
+                              // Logo kecil outlet di pojok foto
+                              Positioned(
+                                right: -6,
+                                bottom: -6,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: ShopLogo(name: shop.name, size: 26),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

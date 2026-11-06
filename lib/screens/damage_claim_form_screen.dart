@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/order_model.dart';
@@ -58,7 +59,7 @@ class _DamageClaimFormScreenState extends State<DamageClaimFormScreen> {
         photos: _photos,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showQuickSnackBar(
         const SnackBar(content: Text('Klaim terkirim. Outlet akan memeriksa bukti fotomu.'), backgroundColor: _amber),
       );
       Navigator.pop(context, true);

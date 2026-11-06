@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../widgets/quick_snackbar.dart';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -659,7 +660,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
             ),
             child: IconButton(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showQuickSnackBar(
                   SnackBar(
                     content: Text(
                       'Chat dengan outlet akan segera hadir.',
@@ -955,7 +956,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
           Expanded(
             child: ElevatedButton.icon(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showQuickSnackBar(
                   SnackBar(
                     content: Text(
                       'Menghubungkan ke layanan bantuan kurir Washora...',

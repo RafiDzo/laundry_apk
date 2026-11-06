@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
@@ -61,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showQuickSnackBar(
         SnackBar(
           content: Text(
             'Email dan password harus diisi!',
@@ -111,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showQuickSnackBar(
           SnackBar(
             content: Text(e.toString(), style: GoogleFonts.inter()),
             backgroundColor: const Color(0xFFDC2626),
@@ -594,7 +595,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       }
                     } catch (e) {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        ScaffoldMessenger.of(context).showQuickSnackBar(
                           SnackBar(
                             content: Text(
                               e.toString(),
