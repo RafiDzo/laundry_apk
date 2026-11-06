@@ -12,6 +12,14 @@ class ShopModel {
   final int pricePerKg;
   final List<ServiceModel> services; // In Firestore, this could be a subcollection or nested map
   final String? ownerId;
+  final double? latitude;
+  final double? longitude;
+  final int reviewCount;
+  final String phone;
+  final String description;
+  final bool isOpen;
+
+  bool get hasLocation => latitude != null && longitude != null;
 
   ShopModel({
     required this.id,
@@ -25,6 +33,12 @@ class ShopModel {
     required this.pricePerKg,
     this.services = const [],
     this.ownerId,
+    this.latitude,
+    this.longitude,
+    this.reviewCount = 0,
+    this.phone = '',
+    this.description = '',
+    this.isOpen = true,
   });
 
   factory ShopModel.fromMap(Map<String, dynamic> data, String id) {
@@ -46,6 +60,12 @@ class ShopModel {
       pricePerKg: data['price_per_kg'] ?? data['pricePerKg'] ?? 0,
       services: servicesList,
       ownerId: data['owner_id'],
+      latitude: (data['latitude'] as num?)?.toDouble(),
+      longitude: (data['longitude'] as num?)?.toDouble(),
+      reviewCount: (data['review_count'] as num?)?.toInt() ?? 0,
+      phone: data['phone'] ?? '',
+      description: data['description'] ?? '',
+      isOpen: data['is_open'] ?? true,
     );
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_config.dart';
@@ -11,6 +12,17 @@ class EmailNotConfirmedException implements Exception {
 
   @override
   String toString() => 'Email belum dikonfirmasi. Cek inbox email kamu.';
+}
+
+/// Status link "Reset Password" dari email (sesi pemulihan Supabase)
+class PasswordRecovery {
+  PasswordRecovery._();
+
+  /// true = link reset dibuka sebelum layar pembuka selesai
+  static bool pending = false;
+
+  /// true = layar pembuka selesai, navigator siap dipakai
+  static bool appReady = false;
 }
 
 class AuthService {
@@ -189,6 +201,47 @@ class AuthService {
     } catch (e) {
       if (e is String) rethrow;
       throw 'Terjadi kesalahan Google Sign-In.';
+    }
+  }
+
+  // ================= LUPA PASSWORD =================
+
+  /// Kirim email reset password. Email berisi link (untuk web) dan kode
+  /// 6 digit (jika template email Supabase memuat {{ .Token }}).
+  Future<void> sendPasswordReset(String email) async {
+    try {
+      await _auth.auth.resetPasswordForEmail(
+        email,
+        redirectTo: kIsWeb ? Uri.base.origin : null,
+      );
+    } on AuthException catch (e) {
+      print('sendPasswordReset: ${e.statusCode} ${e.message}');
+      final msg = e.message.toLowerCase();
+      if (e.statusCode == '429' || msg.contains('rate limit') || msg.contains('security purposes')) {
+        throw 'Terlalu sering meminta reset. Tunggu sekitar 1 menit lalu coba lagi.';
+      }
+      throw _getCustomErrorMessage(e.message);
+    } catch (e) {
+      if (e is String) rethrow;
+      throw 'Gagal mengirim email reset: $e';
+    }
+  }
+
+  /// Verifikasi kode 6 digit dari email reset password (membuat sesi login
+  /// sementara sehingga password baru bisa disimpan).
+  Future<void> verifyRecoveryCode({required String email, required String code}) async {
+    try {
+      await _auth.auth.verifyOTP(type: OtpType.recovery, email: email, token: code);
+    } on AuthException catch (e) {
+      print('verifyRecoveryCode: ${e.statusCode} ${e.message}');
+      final msg = e.message.toLowerCase();
+      if (msg.contains('expired') || msg.contains('invalid') || msg.contains('otp')) {
+        throw 'Kode salah atau sudah kedaluwarsa. Minta kode baru.';
+      }
+      throw _getCustomErrorMessage(e.message);
+    } catch (e) {
+      if (e is String) rethrow;
+      throw 'Gagal memverifikasi kode: $e';
     }
   }
 

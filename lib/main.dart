@@ -6,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_config.dart';
 import 'services/address_service.dart';
 import 'screens/loading_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,8 +22,23 @@ void main() async {
     anonKey: SupabaseConfig.anonKey,
   );
   await AddressService.init();
+
+  // Link "Reset Password" dari email membuka aplikasi dengan sesi pemulihan:
+  // arahkan pengguna ke layar buat password baru.
+  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    if (data.event != AuthChangeEvent.passwordRecovery) return;
+    final nav = appNavigatorKey.currentState;
+    if (PasswordRecovery.appReady && nav != null) {
+      nav.push(MaterialPageRoute(builder: (_) => const ForgotPasswordScreen(fromRecoveryLink: true)));
+    } else {
+      PasswordRecovery.pending = true; // dibuka oleh layar pembuka
+    }
+  });
+
   runApp(const MyApp());
 }
+
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -30,6 +47,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Washora',
+      navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       // Izinkan geser (carousel, list horizontal) dengan mouse & trackpad di web/desktop
       scrollBehavior: const MaterialScrollBehavior().copyWith(

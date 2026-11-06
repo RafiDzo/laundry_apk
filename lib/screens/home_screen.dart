@@ -2,6 +2,7 @@ import 'dart:async';
 import '../widgets/quick_snackbar.dart';
 import '../widgets/shop_branding.dart';
 import 'promo_screen.dart';
+import '../services/geo_service.dart';
 import 'package:flutter/material.dart';
 import '../widgets/washora_logo.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -87,6 +88,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<ShopModel> _shops = [];
   bool _isLoadingShops = true;
+
+  /// Jarak sungguhan (km) dari alamat aktif ke tiap outlet, key = id outlet
+  Map<String, double> _distances = {};
+  int _distanceRequest = 0;
 
   // Outlet terdekat cadangan/preview
   final List<ShopModel> _dummyShops = [
@@ -195,6 +200,23 @@ class _HomeScreenState extends State<HomeScreen>
     _startPromoAutoScroll();
     _loadData();
     _subscribeNotifications();
+    AddressService.currentAddressNotifier.addListener(_refreshDistances);
+  }
+
+  /// Hitung ulang jarak outlet (saat data outlet dimuat / alamat diganti)
+  Future<void> _refreshDistances() async {
+    final request = ++_distanceRequest;
+    final shops = List<ShopModel>.from(_shops);
+    if (shops.isEmpty) return;
+    final result = await GeoService.distancesFor(shops);
+    if (!mounted || request != _distanceRequest) return;
+    setState(() => _distances = result);
+  }
+
+  String _distanceLabel(ShopModel shop) {
+    final km = _distances[shop.id];
+    if (km != null) return GeoService.formatKm(km);
+    return shop.distance.isNotEmpty ? shop.distance : '–';
   }
 
   void _subscribeNotifications() {
@@ -294,6 +316,7 @@ class _HomeScreenState extends State<HomeScreen>
           _shops = fetchedShops.isNotEmpty ? fetchedShops : _dummyShops;
           _isLoadingShops = false;
         });
+        _refreshDistances();
       }
     } catch (_) {
       if (mounted) {
@@ -339,12 +362,23 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<ShopModel> get _filteredShops {
     final allShops = _shops.isNotEmpty ? _shops : _dummyShops;
-    if (_selectedFilterIndex == 0) return allShops;
-    return allShops.where(_shopPassesFilter).toList();
+    final list = _selectedFilterIndex == 0
+        ? List<ShopModel>.from(allShops)
+        : allShops.where(_shopPassesFilter).toList();
+    // Urutkan dari yang terdekat (outlet yang jaraknya belum diketahui di akhir)
+    if (_distances.isNotEmpty) {
+      list.sort((a, b) {
+        final da = _distances[a.id] ?? double.infinity;
+        final db = _distances[b.id] ?? double.infinity;
+        return da.compareTo(db);
+      });
+    }
+    return list;
   }
 
   @override
   void dispose() {
+    AddressService.currentAddressNotifier.removeListener(_refreshDistances);
     _notifReconnectTimer?.cancel();
     _notifSub?.cancel();
     _promoTimer?.cancel();
@@ -1360,7 +1394,9 @@ class _HomeScreenState extends State<HomeScreen>
             'name': shop.name,
             'address': shop.address,
             'rating': shop.rating,
-            'distance': shop.distance,
+            'distance': _distanceLabel(shop),
+            'reviewCount': shop.reviewCount,
+            'phone': shop.phone,
             'imageUrl': ShopBranding.photoUrl(
               id: shop.id,
               name: shop.name,
@@ -1707,7 +1743,9 @@ class _HomeScreenState extends State<HomeScreen>
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
-                                        shop.rating.toStringAsFixed(1),
+                                        shop.reviewCount > 0
+                                            ? '${shop.rating.toStringAsFixed(1)} (${shop.reviewCount})'
+                                            : (shop.rating > 0 ? shop.rating.toStringAsFixed(1) : 'Baru'),
                                         style: GoogleFonts.plusJakartaSans(
                                           color: const Color(0xFFB45309),
                                           fontSize: 11,
@@ -1729,7 +1767,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  shop.distance,
+                                  _distanceLabel(shop),
                                   style: GoogleFonts.plusJakartaSans(
                                     color: const Color(0xFF0077E6),
                                     fontSize: 11,
@@ -1763,15 +1801,21 @@ class _HomeScreenState extends State<HomeScreen>
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: isFast
+                                color: !shop.isOpen
+                                    ? const Color(0xFFFEE2E2)
+                                    : isFast
                                     ? const Color(0xFFDCFCE7)
                                     : const Color(0xFFFEF3C7),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                shop.queueText,
+                                !shop.isOpen
+                                    ? 'TUTUP SEMENTARA'
+                                    : shop.queueText,
                                 style: GoogleFonts.plusJakartaSans(
-                                  color: isFast
+                                  color: !shop.isOpen
+                                      ? const Color(0xFFDC2626)
+                                      : isFast
                                       ? const Color(0xFF16A34A)
                                       : const Color(0xFFD97706),
                                   fontSize: 10,

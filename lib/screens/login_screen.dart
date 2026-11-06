@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import 'signup_screen.dart';
+import 'forgot_password_screen.dart';
 import 'location_screen.dart';
 import 'home_screen.dart';
 import 'owner_dashboard_screen.dart';
@@ -278,9 +279,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                             GestureDetector(
-                              onTap: () {},
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ForgotPasswordScreen(
+                                    initialEmail: _emailController.text.trim(),
+                                  ),
+                                ),
+                              ),
                               child: Text(
-                                'Forgot Password?',
+                                'Lupa Password?',
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,

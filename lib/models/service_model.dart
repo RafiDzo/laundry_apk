@@ -5,6 +5,7 @@ class ServiceModel {
   final int price;
   final String unit; // '/ kg' atau '/ pcs'
   final String iconName;
+  final String duration; // mis. '1-2 Hari', '4 Jam' (opsional)
 
   ServiceModel({
     required this.id,
@@ -13,6 +14,7 @@ class ServiceModel {
     required this.price,
     required this.unit,
     required this.iconName,
+    this.duration = '',
   });
 
   factory ServiceModel.fromMap(Map<String, dynamic> data) {
@@ -23,6 +25,7 @@ class ServiceModel {
       price: data['price'] ?? 0,
       unit: data['unit'] ?? '',
       iconName: data['iconName'] ?? '',
+      duration: data['duration'] ?? '',
     );
   }
 
@@ -34,6 +37,7 @@ class ServiceModel {
       'price': price,
       'unit': unit,
       'iconName': iconName,
+      if (duration.isNotEmpty) 'duration': duration,
     };
   }
 }

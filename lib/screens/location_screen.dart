@@ -140,6 +140,10 @@ class _LocationScreenState extends State<LocationScreen> with TickerProviderStat
                 interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.all,
                 ),
+                // Titik tengah peta = lokasi yang dipilih pengguna
+                onPositionChanged: (camera, hasGesture) {
+                  if (hasGesture) _center = camera.center;
+                },
               ),
               children: [
                 TileLayer(
@@ -655,6 +659,8 @@ class _LocationScreenState extends State<LocationScreen> with TickerProviderStat
                                 label: label,
                                 address: address,
                                 note: 'Ditentukan melalui peta',
+                                latitude: _center.latitude,
+                                longitude: _center.longitude,
                               );
                               if (context.mounted) {
                                 if (Navigator.canPop(context)) {

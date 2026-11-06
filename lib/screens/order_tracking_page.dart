@@ -2,6 +2,7 @@ import 'dart:async';
 import '../widgets/quick_snackbar.dart';
 
 import 'package:flutter/material.dart';
+import '../widgets/order_done_actions.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 import '../models/order_model.dart';
@@ -926,6 +927,8 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
   }
 
   Widget _buildBottomActions() {
+    final order = _order;
+    if (order != null && order.status == 'delivered') return OrderDoneActions(order: order);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: const BoxDecoration(

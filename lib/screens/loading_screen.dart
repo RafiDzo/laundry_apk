@@ -3,6 +3,8 @@ import '../widgets/washora_logo.dart';
 import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'role_selection_screen.dart';
+import 'forgot_password_screen.dart';
+import '../services/auth_service.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -53,10 +55,14 @@ class _LoadingScreenState extends State<LoadingScreen>
     // Navigate to next screen after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
+        PasswordRecovery.appReady = true;
+        final recovery = PasswordRecovery.pending;
+        PasswordRecovery.pending = false;
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                const RoleSelectionScreen(),
+            pageBuilder: (context, animation, secondaryAnimation) => recovery
+                ? const ForgotPasswordScreen(fromRecoveryLink: true)
+                : const RoleSelectionScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
                   return FadeTransition(opacity: animation, child: child);

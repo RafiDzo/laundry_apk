@@ -3,6 +3,7 @@ import '../widgets/quick_snackbar.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'outlet_settings_screen.dart';
 import '../widgets/washora_logo.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -2366,7 +2367,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 title: 'Pengaturan',
                 icon: Icons.tune_rounded,
                 color: const Color(0xFF64748B),
-                onTap: () => _showSnack('Pengaturan Tarif & Outlet — segera hadir'),
+                onTap: () => _openOutletSettings(0),
               ),
             ],
           ),
@@ -2416,132 +2417,20 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
-  void _showTarifModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(ctx).size.height * 0.75,
-        ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 44,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.local_offer_outlined, color: Color(0xFF7C3AED), size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Tarif & Layanan Outlet',
-                          style: GoogleFonts.quicksand(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
-                        ),
-                        Text(
-                          _shop?.name ?? 'Katalog Paket Cucian',
-                          style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    icon: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8)),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  _buildTarifItem('Cuci Komplit', 'Cuci + Pengering + Setrika Rapih', 'Rp 8.000 / Kg', const Color(0xFF0077B6), '2 Hari'),
-                  _buildTarifItem('Cuci Kering', 'Cuci + Pengering Lipat (Tanpa Setrika)', 'Rp 6.000 / Kg', const Color(0xFF0284C7), '1 Hari'),
-                  _buildTarifItem('Setrika Saja', 'Hanya Setrika & Packing Plastik', 'Rp 5.000 / Kg', const Color(0xFFD97706), '1 Hari'),
-                  _buildTarifItem('Bedcover / Selimut', 'Pencucian Khusus Linen Tebal & Bedcover', 'Rp 25.000 / Pcs', const Color(0xFF7C3AED), '2 Hari'),
-                  _buildTarifItem('Sepatu / Helm', 'Deep Clean Treatment Sepatu & Helm', 'Rp 20.000 / Pcs', const Color(0xFF059669), '2 Hari'),
-                  _buildTarifItem('Express Service', 'Layanan Prioritas Selesai dalam 24 Jam', '+Rp 4.000 / Kg', const Color(0xFFDC2626), '1 Hari'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  void _showTarifModal() => _openOutletSettings(1);
 
-  Widget _buildTarifItem(String name, String desc, String price, Color color, String duration) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 38,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(name, style: GoogleFonts.quicksand(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(duration, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(desc, style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B))),
-              ],
-            ),
-          ),
-          Text(price, style: GoogleFonts.quicksand(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A))),
-        ],
-      ),
+  /// Buka Pengaturan Outlet (0 = Info Outlet, 1 = Tarif & Layanan)
+  Future<void> _openOutletSettings(int tab) async {
+    final shop = _shop;
+    if (shop == null) {
+      _showSnack('Daftarkan outlet terlebih dahulu');
+      return;
+    }
+    final updated = await Navigator.push<ShopModel>(
+      context,
+      MaterialPageRoute(builder: (_) => OutletSettingsScreen(shop: shop, initialTab: tab)),
     );
+    if (updated != null && mounted) setState(() => _shop = updated);
   }
 
   Widget _buildClaimsBanner() {
