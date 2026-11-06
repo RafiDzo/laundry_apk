@@ -15,6 +15,10 @@ void main() async {
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
+      // Bilah navigasi Android (bawah) dibuat terang agar menyatu dengan aplikasi
+      systemNavigationBarColor: Color(0xFFF8FAFC),
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
   await Supabase.initialize(
@@ -50,6 +54,16 @@ class MyApp extends StatelessWidget {
       navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       // Izinkan geser (carousel, list horizontal) dengan mouse & trackpad di web/desktop
+      // Warna bilah navigasi Android untuk semua layar (layar yang punya
+      // pengaturan sendiri di bagian bawah tetap bisa menimpanya)
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: const SystemUiOverlayStyle(
+          systemNavigationBarColor: Color(0xFFF8FAFC),
+          systemNavigationBarDividerColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.dark,
+        ),
+        child: child ?? const SizedBox.shrink(),
+      ),
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: PointerDeviceKind.values.toSet(),
       ),

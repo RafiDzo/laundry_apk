@@ -343,7 +343,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Sign up link
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 32),
+                          padding: const EdgeInsets.only(bottom: 24),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -375,17 +375,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-
-                        // Bottom Line
-                        Container(
-                          width: 128,
-                          height: 4,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE2E8F0), // bg-slate-200
-                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                       ],
