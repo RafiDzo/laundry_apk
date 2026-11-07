@@ -3,7 +3,7 @@
          (build debug menambahkannya otomatis, build rilis tidak) -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="laundry_apk"
+        android:label="Washora"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

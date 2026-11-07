@@ -43,21 +43,21 @@ class ShopBranding {
     return 'https://images.unsplash.com/photo-$pick?w=$width&auto=format&fit=crop&q=80';
   }
 
+  /// Semua outlet pakai palet biru Washora yang konsisten.
+  /// Variasi tipis pada shade agar tiap kartu masih terasa unik
+  /// tapi tetap harmonis dan tidak mencolok.
   static const List<List<Color>> palettes = [
-    [Color(0xFF0EA5E9), Color(0xFF0369A1)], // biru laut
-    [Color(0xFF8B5CF6), Color(0xFF6D28D9)], // lavender
-    [Color(0xFF14B8A6), Color(0xFF0F766E)], // tosca
-    [Color(0xFFF59E0B), Color(0xFFEA580C)], // oranye
-    [Color(0xFFEC4899), Color(0xFFBE185D)], // pink
-    [Color(0xFF22C55E), Color(0xFF15803D)], // hijau
-    [Color(0xFF3B82F6), Color(0xFF1D4ED8)], // biru
+    [Color(0xFF0077E6), Color(0xFF005BB5)], // biru utama Washora
+    [Color(0xFF0284C7), Color(0xFF0369A1)], // biru langit
+    [Color(0xFF0EA5E9), Color(0xFF0284C7)], // biru cerah
+    [Color(0xFF1D4ED8), Color(0xFF1E40AF)], // biru tua
+    [Color(0xFF3B82F6), Color(0xFF1D4ED8)], // biru medium
+    [Color(0xFF60A5FA), Color(0xFF2563EB)], // biru muda
+    [Color(0xFF0369A1), Color(0xFF075985)], // biru baja
   ];
 
   static List<Color> paletteFor(String name) {
     final n = name.toLowerCase();
-    if (n.contains('lavender') || n.contains('ungu')) return palettes[1];
-    if (n.contains('eco') || n.contains('green') || n.contains('hijau')) return palettes[5];
-    if (n.contains('express') || n.contains('kilat') || n.contains('quick')) return palettes[3];
     return palettes[_hash(n) % palettes.length];
   }
 
@@ -73,8 +73,8 @@ class ShopBranding {
   }
 }
 
-/// Logo outlet: kotak gradien dengan "pintu mesin cuci" berisi inisial
-/// outlet dan gelembung busa. Dibuat otomatis dari nama outlet.
+/// Logo outlet: kotak biru bertema Washora dengan inisial nama outlet.
+/// Desain bersih, konsisten, dan tidak mencolok.
 class ShopLogo extends StatelessWidget {
   final String name;
   final double size;
@@ -85,78 +85,59 @@ class ShopLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = ShopBranding.paletteFor(name);
     final s = size;
+    final radius = BorderRadius.circular(s * 0.26);
     return Container(
       width: s,
       height: s,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(s * 0.28),
+        borderRadius: radius,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: colors,
+          colors: [
+            colors.first,
+            colors.last,
+          ],
         ),
         boxShadow: [
           BoxShadow(
-            color: colors.last.withValues(alpha: 0.30),
-            blurRadius: s * 0.18,
-            offset: Offset(0, s * 0.06),
+            color: colors.last.withValues(alpha: 0.22),
+            blurRadius: s * 0.20,
+            offset: Offset(0, s * 0.07),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(s * 0.28),
+        borderRadius: radius,
         child: Stack(
           children: [
-            // Gelembung busa dekoratif
-            _bubble(left: s * 0.08, top: s * 0.10, d: s * 0.14, a: 0.35),
-            _bubble(left: s * 0.20, top: s * 0.04, d: s * 0.07, a: 0.30),
-            _bubble(right: -s * 0.10, bottom: -s * 0.12, d: s * 0.45, a: 0.12),
-            _bubble(right: s * 0.10, top: s * 0.12, d: s * 0.08, a: 0.40),
-            // Pintu mesin cuci berisi inisial
-            Center(
+            // Lingkaran dekoratif halus di pojok kanan bawah
+            Positioned(
+              right: -s * 0.08,
+              bottom: -s * 0.08,
               child: Container(
-                width: s * 0.58,
-                height: s * 0.58,
+                width: s * 0.55,
+                height: s * 0.55,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    width: s * 0.05,
-                    strokeAlign: BorderSide.strokeAlignOutside,
-                  ),
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  ShopBranding.initials(name),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: s * 0.22,
-                    fontWeight: FontWeight.w800,
-                    color: colors.last,
-                    letterSpacing: -0.5,
-                    height: 1,
-                  ),
+              ),
+            ),
+            // Inisial nama outlet di tengah
+            Center(
+              child: Text(
+                ShopBranding.initials(name),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: s * 0.30,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                  height: 1,
                 ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _bubble({double? left, double? top, double? right, double? bottom, required double d, required double a}) {
-    return Positioned(
-      left: left,
-      top: top,
-      right: right,
-      bottom: bottom,
-      child: Container(
-        width: d,
-        height: d,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: a),
         ),
       ),
     );

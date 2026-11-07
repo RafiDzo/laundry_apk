@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/evidence_models.dart';
@@ -59,7 +60,7 @@ class EvidenceService {
       }
       return null;
     } catch (e) {
-      print('Error diagnoseOwnerAccess: $e');
+      debugPrint('Error diagnoseOwnerAccess: $e');
       return null;
     }
   }
@@ -89,7 +90,7 @@ class EvidenceService {
           .map<OrderPhoto>((r) => OrderPhoto.fromMap(r, url: urlByPath[r['storage_path']]))
           .toList();
     } catch (e) {
-      print('Error getPhotos: $e');
+      debugPrint('Error getPhotos: $e');
       return [];
     }
   }
@@ -121,7 +122,7 @@ class EvidenceService {
           .maybeSingle();
       return row?['code'] as String?;
     } catch (e) {
-      print('Error getHandoverCode: $e');
+      debugPrint('Error getHandoverCode: $e');
       return null;
     }
   }
@@ -146,7 +147,7 @@ class EvidenceService {
       final row = await _db.from('damage_claims').select().eq('order_id', orderId).maybeSingle();
       return row == null ? null : DamageClaim.fromMap(row);
     } catch (e) {
-      print('Error getClaimForOrder: $e');
+      debugPrint('Error getClaimForOrder: $e');
       return null;
     }
   }

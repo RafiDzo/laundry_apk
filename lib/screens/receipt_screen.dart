@@ -42,13 +42,15 @@ String _dateTime(DateTime d) {
 String _paymentLabel(String m) {
   final s = m.toLowerCase();
   if (s.contains('qris')) return 'QRIS';
-  if (s.contains('cash') || s.contains('tunai') || s.contains('cod'))
+  if (s.contains('cash') || s.contains('tunai') || s.contains('cod')) {
     return 'Tunai';
+  }
   if (s.contains('gopay')) return 'GoPay';
   if (s.contains('ovo')) return 'OVO';
   if (s.contains('dana')) return 'DANA';
-  if (s.contains('transfer') || s.contains('bank') || s.contains('va'))
+  if (s.contains('transfer') || s.contains('bank') || s.contains('va')) {
     return 'Transfer Bank';
+  }
   return m.isEmpty ? '-' : m;
 }
 
@@ -88,10 +90,12 @@ class ReceiptScreen extends StatelessWidget {
       );
     }
     b.writeln('------------------------------');
-    if (order.items.isNotEmpty)
+    if (order.items.isNotEmpty) {
       b.writeln('Subtotal: ${_rupiah(_itemsSubtotal)}');
-    if (_otherFees > 0)
+    }
+    if (_otherFees > 0) {
       b.writeln('Biaya layanan & antar: ${_rupiah(_otherFees)}');
+    }
     b
       ..writeln('*TOTAL: ${_rupiah(order.totalPrice)}*')
       ..writeln(

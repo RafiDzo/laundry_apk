@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SeedData {
@@ -10,11 +11,11 @@ class SeedData {
         // Data kosong, lakukan seeding
         final List<Map<String, dynamic>> initialShops = [
           {
-            'name': 'CleanPro Kemang',
+            'name': 'Sukolilo Fresh Laundry',
             'rating': 4.9,
             'distance': '350m',
             'queue_text': 'ANTRIAN: 2 (CEPAT)',
-            'address': 'Jl. Kemang Raya No. 12A',
+            'address': 'Jl. Keputih Tegal Timur No. 12, Sukolilo, Surabaya',
             'open_hours': '08:00 - 21:00',
             'image_url': 'https://images.unsplash.com/photo-1577553698923-17f1a80ce5bc?w=500&auto=format&fit=crop&q=80',
             'price_per_kg': 10000,
@@ -24,11 +25,11 @@ class SeedData {
             ],
           },
           {
-            'name': 'Lavender Laundry',
+            'name': 'ITS Laundry Center',
             'rating': 4.2,
             'distance': '450m',
             'queue_text': 'ANTRIAN: 8 (SIBUK)',
-            'address': 'Jl. Pangeran Antasari No. 88',
+            'address': 'Jl. Arief Rahman Hakim No. 55, Sukolilo, Surabaya',
             'open_hours': '07:00 - 22:00',
             'image_url': 'https://images.unsplash.com/photo-1635274605638-d44babc08a4f?w=500&auto=format&fit=crop&q=80',
             'price_per_kg': 8500,
@@ -38,11 +39,11 @@ class SeedData {
             ],
           },
           {
-            'name': 'QuickWash Express',
+            'name': 'Keputih Express Wash',
             'rating': 4.9,
             'distance': '150m',
             'queue_text': 'ANTRIAN: 1 (LANCAR)',
-            'address': 'Jl. Bangka Raya No. 15',
+            'address': 'Jl. Keputih Tegal No. 7, Sukolilo, Surabaya',
             'open_hours': '24 Jam',
             'image_url': 'https://images.unsplash.com/photo-1604335398980-ededcadcc37d?w=500&auto=format&fit=crop&q=80',
             'price_per_kg': 12000,
@@ -54,12 +55,12 @@ class SeedData {
         ];
 
         await db.from('shops').insert(initialShops);
-        print('✅ Seeding data toko berhasil dilakukan!');
+        debugPrint('✅ Seeding data toko berhasil dilakukan!');
       } else {
-        print('ℹ️ Data toko sudah ada di Supabase, melewati proses seeding.');
+        debugPrint('ℹ️ Data toko sudah ada di Supabase, melewati proses seeding.');
       }
     } catch (e) {
-      print('❌ Error saat seeding data: $e');
+      debugPrint('❌ Error saat seeding data: $e');
     }
   }
 }

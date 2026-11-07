@@ -62,7 +62,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
         if (needsShop) _loadShop(order.shopId);
       },
       onError: (e) {
-        print('Error watchOrder: $e');
+        debugPrint('Error watchOrder: $e');
         if (!mounted) return;
         setState(() => _isLoading = false);
         // Koneksi realtime terputus: sambung ulang otomatis

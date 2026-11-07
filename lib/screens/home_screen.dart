@@ -98,11 +98,11 @@ class _HomeScreenState extends State<HomeScreen>
   final List<ShopModel> _dummyShops = [
     ShopModel(
       id: 'dummy-1',
-      name: 'CleanPro Kemang',
+      name: 'Sukolilo Fresh Laundry',
       rating: 4.9,
       distance: '350m',
       queueText: 'ANTRIAN: 2 (CEPAT)',
-      address: 'Jl. Kemang Raya No. 12A',
+      address: 'Jl. Keputih Tegal Timur No. 12, Sukolilo',
       openHours: '08:00 - 21:00',
       imageUrl:
           'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=500&auto=format&fit=crop&q=80',
@@ -128,11 +128,11 @@ class _HomeScreenState extends State<HomeScreen>
     ),
     ShopModel(
       id: 'dummy-2',
-      name: 'Lavender Eco Laundry',
+      name: 'ITS Laundry Center',
       rating: 4.8,
       distance: '450m',
       queueText: 'ANTRIAN: 4 (LANCAR)',
-      address: 'Jl. Senopati No. 88, Kebayoran',
+      address: 'Jl. Arief Rahman Hakim No. 55, Sukolilo',
       openHours: '07:00 - 22:00',
       imageUrl:
           'https://images.unsplash.com/photo-1521656693074-0ef32e80a5d5?w=500&auto=format&fit=crop&q=80',
@@ -158,11 +158,11 @@ class _HomeScreenState extends State<HomeScreen>
     ),
     ShopModel(
       id: 'dummy-3',
-      name: 'QuickWash Express Service',
+      name: 'Keputih Express Wash',
       rating: 4.9,
       distance: '150m',
       queueText: 'ANTRIAN: 1 (SANGAT CEPAT)',
-      address: 'Jl. Jend. Sudirman No. 55',
+      address: 'Jl. Keputih Tegal No. 7, Sukolilo',
       openHours: '06:00 - 22:00',
       imageUrl:
           'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=500&auto=format&fit=crop&q=80',
@@ -244,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen>
             });
           },
           onError: (e) {
-            print('Error stream notifikasi: $e');
+            debugPrint('Error stream notifikasi: $e');
             // Koneksi realtime terputus: sambung ulang otomatis
             _notifReconnectTimer?.cancel();
             _notifReconnectTimer = Timer(const Duration(seconds: 5), () {

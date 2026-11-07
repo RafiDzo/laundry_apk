@@ -67,7 +67,7 @@ class _DamageClaimFormScreenState extends State<DamageClaimFormScreen> {
       );
       Navigator.pop(context, true);
     } catch (e) {
-      print('Error createClaim: $e');
+      debugPrint('Error createClaim: $e');
       final msg = e.toString();
       setState(() {
         _busy = false;
