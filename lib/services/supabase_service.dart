@@ -89,6 +89,31 @@ class SupabaseService {
     return null;
   }
 
+  /// Simpan pengaturan outlet milik mitra (layanan, harga, jam operasional, antar jemput).
+  /// Mengembalikan null jika tersimpan, atau pesan penyebab gagal untuk ditampilkan.
+  Future<String?> updateShop(String shopId, Map<String, dynamic> updates) async {
+    try {
+      final updated = await _db.from('shops').update(updates).eq('id', shopId).select('id');
+      if (updated.isEmpty) {
+        // RLS menolak diam-diam: akun yang login bukan pemilik outlet ini
+        return 'Gagal menyimpan: akun yang login (${_db.auth.currentUser?.email ?? 'tanpa sesi'}) '
+            'bukan pemilik outlet ini. Logout lalu login ulang sebagai mitra.';
+      }
+      return null;
+    } on PostgrestException catch (e) {
+      print('Error updateShop: ${e.code} ${e.message}');
+      if (e.code == '42703' || e.code == 'PGRST204') {
+        return 'Kolom pengaturan belum ada di database. '
+            'Jalankan supabase_pengaturan_outlet.sql di Supabase SQL Editor.';
+      }
+      if (e.code == '23514') return 'Ada nilai yang tidak valid (harga/ongkir tidak boleh minus).';
+      return 'Gagal menyimpan: ${e.message}';
+    } catch (e) {
+      print('Error updateShop: $e');
+      return 'Gagal menyimpan. Periksa koneksi internet lalu coba lagi.';
+    }
+  }
+
   /// Daftarkan outlet baru milik owner yang sedang login (form "Daftarkan Outlet")
   Future<ShopModel> createMyShop({
     required String name,

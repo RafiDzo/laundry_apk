@@ -141,6 +141,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
   void initState() {
     super.initState();
     _allServices = _buildServicesForShop();
+    if (_allServices.isEmpty) _selectedServiceIndices.clear();
     _categories = [
       'Semua',
       ..._allServices.map((s) => s['category'] as String).toSet(),
@@ -174,6 +175,12 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
         return Icons.bed_rounded;
       case 'dry':
         return Icons.dry_rounded;
+      case 'sports_motorsports':
+        return Icons.sports_motorsports_rounded;
+      case 'curtains':
+        return Icons.curtains_rounded;
+      case 'child_care':
+        return Icons.child_care_rounded;
       default:
         return Icons.local_laundry_service_rounded;
     }
@@ -185,9 +192,14 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
   List<Map<String, dynamic>> _buildServicesForShop() {
     final raw = widget.laundry['services'];
     if (raw is List && raw.isNotEmpty) {
-      return raw.whereType<Map>().map((s) {
+      // Layanan yang dimatikan mitra di "Tarif Layanan" tidak ditampilkan ke pelanggan
+      final active = raw.whereType<Map>().where((s) => (s['isActive'] ?? s['is_active'] ?? true) == true);
+      return active.map((s) {
         final price = (s['price'] as num?)?.toInt() ?? 0;
         final unit = (s['unit'] as String?)?.isNotEmpty == true ? s['unit'] as String : '/ kg';
+        final duration = (s['duration'] as String?)?.isNotEmpty == true
+            ? s['duration'] as String
+            : (unit.contains('kg') ? '1-2 Hari' : '2 Hari');
         return <String, dynamic>{
           'id': s['id'] ?? '',
           'name': s['name'] ?? 'Layanan',
@@ -196,7 +208,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
           'priceRaw': price,
           'unit': unit,
           'category': unit.contains('kg') ? 'Kiloan' : 'Satuan',
-          'duration': unit.contains('kg') ? '1-2 Hari' : '2 Hari',
+          'duration': duration,
           'icon': _iconFromName(s['iconName'] as String? ?? ''),
           'badge': null,
         };
@@ -271,6 +283,10 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
   }
 
   void _navigateToOrderDetail() {
+    if (widget.laundry['isOpen'] == false) {
+      _showToast('Outlet sedang tutup sementara. Coba lagi nanti atau pilih outlet lain.');
+      return;
+    }
     if (_selectedServiceIndices.isEmpty) {
       _showToast('Pilih minimal 1 layanan terlebih dahulu!');
       return;
@@ -692,8 +708,15 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
     final address = widget.laundry['address'] as String? ??
         'Jl. Kemang Raya No. 12A, Mampang Prapatan, Jakarta Selatan';
     final distance = widget.laundry['distance'] as String? ?? '350 m';
-    final openHours = widget.laundry['openHours'] as String? ?? '08:00 - 21:00 WIB';
-    final queueText = widget.laundry['queueText'] as String? ?? 'Antrean Rendah (Lancar)';
+    final openHoursRaw = widget.laundry['openHours'] as String?;
+    final openHours = (openHoursRaw == null || openHoursRaw.isEmpty) ? '08:00 - 21:00 WIB' : openHoursRaw;
+    final operationalDays = widget.laundry['operationalDays'] as String?;
+    final isOpen = widget.laundry['isOpen'] != false;
+    final queueTextRaw = widget.laundry['queueText'] as String?;
+    final queueText = !isOpen
+        ? 'Tutup Sementara'
+        : ((queueTextRaw == null || queueTextRaw.isEmpty) ? 'Buka' : queueTextRaw);
+    final queueColor = isOpen ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -785,27 +808,43 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.schedule_rounded, size: 16, color: Color(0xFF64748B)),
-                  const SizedBox(width: 6),
-                  Text(
-                    openHours,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF475569),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.schedule_rounded, size: 16, color: Color(0xFF64748B)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            openHours,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF475569),
+                            ),
+                          ),
+                          if (operationalDays != null && operationalDays.isNotEmpty)
+                            Text(
+                              operationalDays,
+                              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0xFF94A3B8)),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Row(
                 children: [
                   Container(
                     width: 7,
                     height: 7,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF16A34A),
+                    decoration: BoxDecoration(
+                      color: queueColor,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -815,7 +854,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF16A34A),
+                      color: queueColor,
                     ),
                   ),
                 ],

@@ -50,9 +50,49 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
     {'time': '19:00', 'label': 'Malam', 'available': false},
   ];
 
+  // ── Pengaturan antar jemput dari dashboard mitra ──
+  bool get _outletHasCourier => widget.laundry['isDeliveryAvailable'] != false;
+  int get _minDeliveryOrder => (widget.laundry['minDeliveryOrder'] as num?)?.toInt() ?? 0;
+  String get _feeType => widget.laundry['deliveryFeeType'] as String? ?? 'free';
+  int get _feeAmount => (widget.laundry['deliveryFee'] as num?)?.toInt() ?? 0;
+
+  /// Kurir bisa dipilih jika outlet menyediakannya dan pesanan memenuhi minimal order
+  bool get _courierAllowed => _outletHasCourier && widget.totalAmount >= _minDeliveryOrder;
+
+  String? get _courierBlockedReason {
+    if (!_outletHasCourier) return 'Outlet ini belum menyediakan kurir. Silakan drop-off ke outlet.';
+    if (widget.totalAmount < _minDeliveryOrder) {
+      return 'Minimal pesanan untuk antar jemput ${_formatPrice(_minDeliveryOrder)}.';
+    }
+    return null;
+  }
+
+  /// Jarak outlet dalam km dari teks seperti "350 m" atau "1,2 km" (dibulatkan ke atas, min. 1 km)
+  int get _distanceKm {
+    final text = (widget.laundry['distance'] as String? ?? '').toLowerCase().replaceAll(',', '.');
+    final value = double.tryParse(RegExp(r'[\d.]+').firstMatch(text)?.group(0) ?? '');
+    if (value == null) return 1;
+    final km = text.contains('km') ? value : value / 1000;
+    return km.ceil() < 1 ? 1 : km.ceil();
+  }
+
+  int get _courierFee {
+    switch (_feeType) {
+      case 'flat':
+        return _feeAmount;
+      case 'per_km':
+        return _feeAmount * _distanceKm;
+      default:
+        return 0;
+    }
+  }
+
+  String get _courierFeeLabel => _courierFee == 0 ? 'Gratis Ongkir' : _formatPrice(_courierFee);
+
   @override
   void initState() {
     super.initState();
+    if (!_courierAllowed) _selectedDeliveryType = 1;
     _loadUserAddress();
   }
 
@@ -68,7 +108,7 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
     }
   }
 
-  int get _deliveryFee => _selectedDeliveryType == 0 ? 0 : 0; // Promo Gratis Ongkir aktif
+  int get _deliveryFee => _selectedDeliveryType == 0 ? _courierFee : 0;
 
   int get _finalTotalAmount => widget.totalAmount + _deliveryFee;
 
@@ -324,10 +364,14 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
         _buildDeliveryCard(
           index: 0,
           title: 'Kurir Antar-Jemput Washora',
-          subtitle: 'Kurir datang menjemput cucian dan mengantar kembali ke rumah Anda.',
+          subtitle: _courierBlockedReason ??
+              (_feeType == 'per_km'
+                  ? 'Kurir menjemput & mengantar kembali. Ongkir ${_formatPrice(_feeAmount)}/km × $_distanceKm km.'
+                  : 'Kurir datang menjemput cucian dan mengantar kembali ke rumah Anda.'),
           badge: 'Paling Populer',
           icon: Icons.two_wheeler_rounded,
-          feeLabel: 'Gratis Promo',
+          feeLabel: _courierAllowed ? _courierFeeLabel : 'Tidak tersedia',
+          enabled: _courierAllowed,
         ),
         const SizedBox(height: 10),
         _buildDeliveryCard(
@@ -349,13 +393,16 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
     required String badge,
     required IconData icon,
     required String feeLabel,
+    bool enabled = true,
   }) {
     final isSelected = _selectedDeliveryType == index;
 
-    return Material(
+    return Opacity(
+     opacity: enabled ? 1 : 0.55,
+     child: Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => setState(() => _selectedDeliveryType = index),
+        onTap: enabled ? () => setState(() => _selectedDeliveryType = index) : null,
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -460,6 +507,7 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
           ),
         ),
       ),
+     ),
     );
   }
 
@@ -780,11 +828,13 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
                 style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF64748B)),
               ),
               Text(
-                _selectedDeliveryType == 0 ? 'GRATIS (Promo)' : 'Rp 0 (Bebas Biaya)',
+                _deliveryFee == 0
+                    ? (_selectedDeliveryType == 0 ? 'Gratis' : 'Rp 0 (Bebas Biaya)')
+                    : _formatPrice(_deliveryFee),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF16A34A),
+                  color: _deliveryFee == 0 ? const Color(0xFF16A34A) : const Color(0xFF0F172A),
                 ),
               ),
             ],
