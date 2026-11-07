@@ -80,8 +80,9 @@ class _OutletSettingsScreenState extends State<OutletSettingsScreen>
   void initState() {
     super.initState();
     _parseHours(widget.shop.openHours);
-    if (widget.shop.hasLocation)
+    if (widget.shop.hasLocation) {
       _location = LatLng(widget.shop.latitude!, widget.shop.longitude!);
+    }
     for (final c in [_name, _phone, _desc, _address, _price]) {
       c.addListener(_markDirty);
     }

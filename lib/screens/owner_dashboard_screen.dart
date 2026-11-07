@@ -2817,8 +2817,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
 
   Widget _buildStatusCucianCard(OrderModel order) {
     int currentStep = 0;
-    if (order.status == 'washing') currentStep = 1;
-    else if (order.status == 'drying') currentStep = 2;
+    if (order.status == 'washing') {
+      currentStep = 1;
+    } else if (order.status == 'drying') currentStep = 2;
     else if (order.status == 'done' || order.status == 'delivered') currentStep = 3;
 
     final isCancelled = order.status == 'cancelled';
@@ -4442,7 +4443,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                     Expanded(
                       flex: 1,
                       child: DropdownButtonFormField<String>(
-                        value: unit,
+                        initialValue: unit,
                         items: const [
                           DropdownMenuItem(value: '/ kg', child: Text('/ Kg')),
                           DropdownMenuItem(value: '/ pcs', child: Text('/ Pcs')),
