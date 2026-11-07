@@ -126,6 +126,7 @@ class _LogisticsScreenState extends State<LogisticsScreen> {
           items: widget.items,
           totalAmount: _finalTotalAmount,
           notes: widget.notes,
+          deliveryFee: _deliveryFee,
         ),
       ),
     );

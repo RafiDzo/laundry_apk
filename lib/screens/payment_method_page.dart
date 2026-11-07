@@ -7,6 +7,12 @@ import 'dropoff_tracking_page.dart';
 import '../models/order_model.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
+import '../services/promo_service.dart';
+import '../models/shop_promo_model.dart';
+import '../models/promo_checkout.dart';
+import '../widgets/promo_checkout_card.dart';
+import '../models/membership_models.dart';
+import '../services/membership_service.dart';
 
 class PaymentMethodPage extends StatefulWidget {
   final bool isDropoff;
@@ -15,6 +21,9 @@ class PaymentMethodPage extends StatefulWidget {
   final int totalAmount;
   final String notes;
 
+  /// Ongkir kurir yang sudah termasuk di [totalAmount] (untuk promo gratis ongkir)
+  final int deliveryFee;
+
   const PaymentMethodPage({
     super.key,
     this.isDropoff = false,
@@ -22,6 +31,7 @@ class PaymentMethodPage extends StatefulWidget {
     required this.items,
     required this.totalAmount,
     required this.notes,
+    this.deliveryFee = 0,
   });
 
   @override
@@ -31,6 +41,81 @@ class PaymentMethodPage extends StatefulWidget {
 class _PaymentMethodPageState extends State<PaymentMethodPage> {
   String _selectedMethod = 'dana';
   bool _isProcessing = false;
+
+  // ── Promo outlet ──
+  List<PromoQuote> _quotes = [];
+  PromoQuote? _applied;
+  bool _promoLoading = true;
+
+  // ── Benefit member (gratis ongkir & poin) ──
+  MemberBenefits _benefits = MemberBenefits.none;
+  bool _useFreeDelivery = false;
+  bool _usePoints = false;
+
+  int get _itemsSubtotal => widget.items.fold<num>(0, (s, i) => s + i.price * i.qty).round();
+
+  /// Gratis ongkir member hanya untuk antar-jemput yang memang berongkir
+  bool get _freeDeliveryEligible => !widget.isDropoff && widget.deliveryFee > 0 && _benefits.canUseFreeDelivery;
+  int get _memberDelivery => _useFreeDelivery && _freeDeliveryEligible ? widget.deliveryFee : 0;
+  int get _discount => _applied?.discount ?? 0;
+
+  /// Poin dipakai sebesar-besarnya tanpa melebihi saldo, harga layanan, atau sisa tagihan
+  int get _pointsUsed {
+    if (!_usePoints || _benefits.pointsBalance <= 0) return 0;
+    final remaining = widget.totalAmount - _discount - _memberDelivery;
+    return [_benefits.pointsBalance, _itemsSubtotal, remaining < 0 ? 0 : remaining].reduce((a, b) => a < b ? a : b);
+  }
+
+  int get _payable =>
+      (widget.totalAmount - _discount - _memberDelivery - _pointsUsed).clamp(0, widget.totalAmount);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBenefitsThenPromos();
+  }
+
+  Future<void> _loadBenefitsThenPromos({String? keepId}) async {
+    final b = await MembershipService().fetchBenefits();
+    if (!mounted) return;
+    setState(() {
+      _benefits = b;
+      // Gratis ongkir member otomatis dipakai jika berhak
+      _useFreeDelivery = _freeDeliveryEligible;
+      if (b.pointsBalance <= 0) _usePoints = false;
+    });
+    await _loadPromos(keepId: keepId);
+  }
+
+  /// Ambil promo aktif outlet lalu hitung potongannya untuk keranjang ini.
+  /// [keepId] = pertahankan promo yang sedang dipilih jika masih berlaku.
+  Future<void> _loadPromos({String? keepId}) async {
+    final shopId = widget.laundry['id']?.toString() ?? '';
+    if (shopId.isEmpty || shopId.startsWith('dummy-')) {
+      if (mounted) setState(() => _promoLoading = false);
+      return;
+    }
+    final promos = await PromoService().getActiveCustomerPromos(shopId);
+    if (!mounted) return;
+    final quotes = promos
+        .where((p) => p.type != ShopPromoType.cashback)
+        .map((p) => quotePromo(
+              p,
+              items: widget.items,
+              shopServices: (widget.laundry['services'] as List?) ?? const [],
+              // Ongkir yang sudah digratiskan member tidak bisa digratiskan lagi oleh promo
+              deliveryFee: widget.isDropoff || _memberDelivery > 0 ? 0 : widget.deliveryFee,
+              isDropoff: widget.isDropoff,
+            ))
+        .toList();
+    setState(() {
+      _quotes = quotes;
+      _promoLoading = false;
+      _applied = keepId != null
+          ? quotes.where((q) => q.promo.id == keepId && q.usable).firstOrNull
+          : bestAutoPromo(quotes);
+    });
+  }
 
   String _formatPrice(int price) {
     return 'Rp ${price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
@@ -140,18 +225,53 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
         shopName: widget.laundry['name'] ?? 'CleanPro Kemang',
         items: widget.items,
         status: 'pending',
-        totalPrice: widget.totalAmount,
+        totalPrice: _payable,
         serviceFee: 2000,
         notes: widget.notes.isEmpty ? null : widget.notes,
         paymentMethod: _selectedMethod,
         createdAt: DateTime.now(),
         deliveryType: widget.isDropoff ? 'dropoff' : 'pickup',
+        promoId: _applied?.promo.id,
+        promoTitle: _applied?.promo.title,
+        discountAmount: _discount,
+        memberFreeDelivery: _memberDelivery > 0,
+        pointsUsed: _pointsUsed,
       );
 
       String orderId;
       try {
         orderId = await SupabaseService().createOrder(order);
       } catch (e) {
+        final msg = e.toString();
+        // Benefit member ditolak server (kuota habis, poin kurang, langganan berakhir)
+        final memberReason = RegExp(r'(Kuota gratis ongkir[^,)]*|Gratis ongkir member[^,)]*|Poin [^,)]*)').firstMatch(msg)?.group(0);
+        if (memberReason != null) {
+          await _loadBenefitsThenPromos(keepId: _applied?.promo.id);
+          throw '${memberReason.trim()}. Periksa total, lalu konfirmasi lagi.';
+        }
+        if ((_memberDelivery > 0 || _pointsUsed > 0) &&
+            (msg.contains('member_free_delivery') || msg.contains('points_used'))) {
+          setState(() {
+            _useFreeDelivery = false;
+            _usePoints = false;
+          });
+          throw 'Benefit member belum aktif di database. Benefit dilepas, silakan konfirmasi lagi.';
+        }
+        if (_applied != null) {
+          // Kolom promo belum dibuat di database
+          if (msg.contains('promo_id') || msg.contains('discount_amount')) {
+            setState(() => _applied = null);
+            throw 'Promo belum aktif di database outlet. Promo dilepas, silakan konfirmasi lagi.';
+          }
+          // Ditolak server: kuota habis, kedaluwarsa, minimal belanja, dll.
+          final reason = RegExp(r'(Promo[^,)]*|Kuota promo[^,)]*|Belum memenuhi minimal[^,)]*|Potongan promo tidak valid)')
+              .firstMatch(msg)
+              ?.group(0);
+          if (reason != null) {
+            await _loadPromos(keepId: _applied?.promo.id);
+            throw '${reason.trim()}. Periksa promo & total, lalu konfirmasi lagi.';
+          }
+        }
         throw 'Pesanan gagal dikirim ke outlet. Periksa koneksi lalu coba lagi.';
       }
 
@@ -214,6 +334,17 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              if (_benefits.active || _benefits.pointsBalance > 0) ...[
+                                _buildMemberCard(),
+                                const SizedBox(height: 14),
+                              ],
+                              PromoCheckoutCard(
+                                loading: _promoLoading,
+                                quotes: _quotes,
+                                applied: _applied,
+                                onChanged: (q) => setState(() => _applied = q),
+                              ),
+                              const SizedBox(height: 14),
                               _buildOrderSummaryCard(),
                               const SizedBox(height: 18),
                               ..._buildPaymentSections(),
@@ -286,6 +417,83 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
             const SizedBox(width: 36),
           ],
         ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════
+  //  BENEFIT MEMBER
+  // ══════════════════════════════════════════
+  Widget _buildMemberCard() {
+    final b = _benefits;
+    final left = b.freeDeliveryLeft;
+    final String deliverySub;
+    if (!b.active) {
+      deliverySub = 'Khusus member aktif';
+    } else if (widget.isDropoff) {
+      deliverySub = 'Hanya untuk antar-jemput kurir';
+    } else if (widget.deliveryFee <= 0) {
+      deliverySub = 'Ongkir pesanan ini sudah gratis';
+    } else if (!b.canUseFreeDelivery) {
+      deliverySub = 'Kuota bulan ini sudah habis';
+    } else {
+      deliverySub = 'Hemat ${_formatPrice(widget.deliveryFee)} · ${left == null ? 'tanpa batas' : 'sisa $left bulan ini'}';
+    }
+    final pointsValue = _usePoints ? _pointsUsed : [_benefits.pointsBalance, _itemsSubtotal].reduce((a, c) => a < c ? a : c);
+
+    Widget row({required IconData icon, required String title, required String sub, required bool value, ValueChanged<bool>? onChanged}) {
+      return SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        secondary: Icon(icon, color: onChanged == null ? const Color(0xFFCBD5E1) : const Color(0xFF0F172A)),
+        title: Text(title,
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700,
+                color: onChanged == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A))),
+        subtitle: Text(sub, style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: const Color(0xFF64748B))),
+        value: value,
+        onChanged: onChanged,
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.workspace_premium_rounded, size: 18, color: Color(0xFFB7791F)),
+              const SizedBox(width: 8),
+              Text(b.active ? 'Benefit member ${b.planName ?? ''}' : 'Poin kamu',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A))),
+            ],
+          ),
+          if (b.active)
+            row(
+              icon: Icons.local_shipping_outlined,
+              title: 'Gratis ongkir member',
+              sub: deliverySub,
+              value: _memberDelivery > 0,
+              onChanged: _freeDeliveryEligible
+                  ? (v) {
+                      setState(() => _useFreeDelivery = v);
+                      _loadPromos(keepId: _applied?.promo.id);
+                    }
+                  : null,
+            ),
+          if (b.pointsBalance > 0)
+            row(
+              icon: Icons.savings_outlined,
+              title: 'Pakai poin (saldo ${b.pointsBalance})',
+              sub: _usePoints ? 'Memotong ${_formatPrice(_pointsUsed)}' : 'Bisa memotong hingga ${_formatPrice(pointsValue)} · 1 poin = Rp 1',
+              value: _usePoints,
+              onChanged: (v) => setState(() => _usePoints = v),
+            ),
+        ],
       ),
     );
   }
@@ -370,7 +578,7 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
                 ],
               ),
               Text(
-                _formatPrice(widget.totalAmount),
+                _formatPrice(_payable),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -681,7 +889,7 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
                   ),
                 ),
                 Text(
-                  _formatPrice(widget.totalAmount),
+                  _formatPrice(_payable),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 19,
                     fontWeight: FontWeight.w800,

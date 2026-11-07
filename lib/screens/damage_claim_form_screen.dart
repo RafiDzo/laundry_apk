@@ -1,3 +1,4 @@
+import '../services/membership_service.dart';
 import 'package:flutter/material.dart';
 import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -42,8 +43,10 @@ class _DamageClaimFormScreenState extends State<DamageClaimFormScreen> {
       setState(() => _error = 'Jelaskan kerusakan minimal 10 karakter.');
       return;
     }
-    if (!widget.order.canClaim) {
-      setState(() => _error = 'Batas waktu klaim 2×24 jam sudah lewat.');
+    final claimHours = await MembershipService().claimHoursFor(widget.order);
+    if (!mounted) return;
+    if (!widget.order.canClaimWithin(claimHours)) {
+      setState(() => _error = 'Batas waktu klaim $claimHours jam sudah lewat.');
       return;
     }
 

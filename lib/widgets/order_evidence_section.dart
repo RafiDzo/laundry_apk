@@ -1,3 +1,4 @@
+import '../services/membership_service.dart';
 import 'package:flutter/material.dart';
 import 'quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -39,6 +40,7 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
   DamageClaim? _claim;
   String? _code;
   bool _busy = false;
+  int _claimHours = 48; // mengikuti tingkat member saat cucian diterima
 
   OrderModel get _order => widget.order;
 
@@ -56,6 +58,9 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
   }
 
   Future<void> _load() async {
+    MembershipService().claimHoursFor(_order).then((h) {
+      if (mounted && h != _claimHours) setState(() => _claimHours = h);
+    });
     final results = await Future.wait([
       _service.getPhotos(_order.id),
       _service.getClaimForOrder(_order.id),
@@ -192,7 +197,7 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
     final cards = <Widget>[
       if (_order.status == 'done') _buildHandoverCard(),
       if (_order.status == 'delivered' && _order.receivedAt != null) _buildReceivedCard(),
-      if (_claim != null) _buildClaimCard() else if (_order.canClaim) _buildReportCard(),
+      if (_claim != null) _buildClaimCard() else if (_order.canClaimWithin(_claimHours)) _buildReportCard(),
       if (_order.intakeAt != null || _photos.isNotEmpty) _buildPhotosCard(),
     ];
     if (cards.isEmpty) return const SizedBox.shrink();
@@ -321,7 +326,7 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
 
   // ── Tombol lapor kerusakan (dalam 2×24 jam) ──
   Widget _buildReportCard() {
-    final left = _order.receivedAt!.add(OrderModel.claimWindow).difference(DateTime.now());
+    final left = _order.receivedAt!.add(Duration(hours: _claimHours)).difference(DateTime.now());
     final leftText = left.inHours >= 1 ? '${left.inHours} jam' : '${left.inMinutes} menit';
     return _card(
       child: Column(

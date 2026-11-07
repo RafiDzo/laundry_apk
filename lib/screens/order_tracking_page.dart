@@ -9,6 +9,7 @@ import '../models/order_model.dart';
 import '../services/supabase_service.dart';
 import '../widgets/order_evidence_section.dart';
 import 'home_screen.dart';
+import 'chat_room_screen.dart';
 
 class OrderTrackingPage extends StatefulWidget {
   final String orderId;
@@ -660,17 +661,8 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
               ],
             ),
             child: IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showQuickSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Chat dengan outlet akan segera hadir.',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 12),
-                    ),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
+              tooltip: 'Chat dengan outlet',
+              onPressed: () => openChatForOrder(context, order.id, fromOrderPage: true),
               icon: const Icon(
                 Icons.chat_bubble_rounded,
                 color: _white,

@@ -5,6 +5,7 @@ import '../models/notification_model.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import 'order_history_screen.dart';
+import 'chat_room_screen.dart';
 
 const _blue = Color(0xFF0077E6);
 const _blueLight = Color(0xFFEFF6FF);
@@ -30,6 +31,10 @@ const _border = Color(0xFFE2E8F0);
     case 'cancelled':
       return (Icons.cancel_rounded, const Color(0xFFDC2626));
     // Notifikasi klaim kerusakan (status = 'claim_<status klaim>')
+    case 'review_reply':
+      return (Icons.reviews_rounded, const Color(0xFFD97706));
+    case 'chat':
+      return (Icons.chat_rounded, const Color(0xFF0077B6));
     case 'claim_pending':
       return (Icons.assignment_late_outlined, const Color(0xFFD97706));
     case 'claim_approved':
@@ -86,6 +91,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+      return;
+    }
+
+    // Notifikasi pesan chat dari outlet: langsung buka ruang chat pesanan itu
+    if (notif.status == 'chat') {
+      await openChatForOrder(context, notif.orderId!);
       return;
     }
 

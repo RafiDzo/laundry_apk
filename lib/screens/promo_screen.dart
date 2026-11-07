@@ -1,3 +1,4 @@
+import 'membership_screen.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -644,76 +645,41 @@ class _PromoScreenState extends State<PromoScreen> {
   Widget _buildPlans() {
     return Padding(
       key: _plansKey,
-      padding: const EdgeInsets.only(top: 26),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(16, 26, 16, 0),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MembershipScreen())),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: _kBorder)),
             child: Row(
               children: [
+                for (final c in const [Color(0xFF9A5B2E), Color(0xFF64748B), Color(0xFFB7791F)])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Icon(Icons.workspace_premium_rounded, color: c, size: 22),
+                  ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Paket Langganan',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: _kInk,
-                        ),
-                      ),
+                      Text('Langganan Bronze · Silver · Gold',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: _kInk)),
                       const SizedBox(height: 2),
-                      Text(
-                        'Bayar bulanan, cuci tanpa mikir',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: _kMuted,
-                        ),
-                      ),
+                      Text('Mulai Rp 19.000/bulan · lihat benefit tiap tingkat',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 12, color: _kMuted)),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Hemat s.d 35%',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF15803D),
-                    ),
-                  ),
-                ),
+                const Icon(Icons.chevron_right_rounded, color: _kMuted),
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 290,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              itemCount: PromoCatalog.plans.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => _PlanCard(
-                plan: PromoCatalog.plans[i],
-                onPick: () => _toast(
-                  'Paket ${PromoCatalog.plans[i].name} dicatat. Pembayaran langganan segera hadir!',
-                  icon: Icons.workspace_premium_rounded,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1701,227 +1667,3 @@ class _DashedBorderPainter extends CustomPainter {
   bool shouldRepaint(covariant _DashedBorderPainter old) => old.color != color;
 }
 
-// ═══════════════════════════════════════════════════
-//  KARTU PAKET LANGGANAN
-// ═══════════════════════════════════════════════════
-class _PlanCard extends StatelessWidget {
-  final SubscriptionPlan plan;
-  final VoidCallback onPick;
-
-  const _PlanCard({required this.plan, required this.onPick});
-
-  @override
-  Widget build(BuildContext context) {
-    final saving = ((1 - plan.price / plan.normalPrice) * 100).round();
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: 200,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: plan.popular ? plan.colors.first : _kBorder,
-              width: plan.popular ? 2 : 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: (plan.popular ? plan.colors.first : _kInk).withValues(
-                  alpha: plan.popular ? 0.18 : 0.05,
-                ),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: plan.colors),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.workspace_premium_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          plan.name,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: _kInk,
-                          ),
-                        ),
-                        Text(
-                          plan.tagline,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10.5,
-                            color: _kMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                formatRupiah(plan.normalPrice),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  color: const Color(0xFF94A3B8),
-                  decoration: TextDecoration.lineThrough,
-                ),
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    formatRupiah(plan.price),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      color: plan.colors.first,
-                    ),
-                  ),
-                  Text(
-                    ' /bln',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      color: _kMuted,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${plan.quota} · hemat $saving%',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF16A34A),
-                ),
-              ),
-              const SizedBox(height: 10),
-              for (final f in plan.features.take(4))
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle_rounded,
-                        size: 14,
-                        color: plan.colors.first,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          f,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11.5,
-                            color: const Color(0xFF334155),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 36,
-                child: plan.popular
-                    ? DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: plan.colors),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: TextButton(
-                          onPressed: onPick,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white,
-                          ),
-                          child: Text(
-                            'Pilih Paket',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      )
-                    : OutlinedButton(
-                        onPressed: onPick,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: plan.colors.first,
-                          side: BorderSide(
-                            color: plan.colors.first.withValues(alpha: 0.5),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Text(
-                          'Pilih Paket',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-              ),
-            ],
-          ),
-        ),
-        if (plan.popular)
-          Positioned(
-            top: -10,
-            right: 14,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFBBF24), Color(0xFFF97316)],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFF97316).withValues(alpha: 0.35),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Text(
-                '⭐ POPULER',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}

@@ -14,6 +14,7 @@ import '../models/service_model.dart';
 import '../services/seed_data.dart';
 import 'shop_detail_screen.dart';
 import 'notifications_screen.dart';
+import '../widgets/chat_widgets.dart';
 import 'order_history_screen.dart';
 import 'profile_screen.dart';
 import '../services/address_service.dart';
@@ -365,13 +366,21 @@ class _HomeScreenState extends State<HomeScreen>
     final list = _selectedFilterIndex == 0
         ? List<ShopModel>.from(allShops)
         : allShops.where(_shopPassesFilter).toList();
-    // Urutkan dari yang terdekat (outlet yang jaraknya belum diketahui di akhir)
+    // Urutan: jarak + rating. Rating disesuaikan jumlah ulasan agar outlet dengan
+    // 1 ulasan bintang 5 tidak langsung mengalahkan outlet 4,8 dari 200 ulasan.
+    // Tiap 1 bintang di atas rata-rata (4,0) setara ±600 m lebih dekat.
+    double adjusted(ShopModel s) => (s.rating * s.reviewCount + 4.0 * 5) / (s.reviewCount + 5);
     if (_distances.isNotEmpty) {
+      double score(ShopModel s) {
+        final d = _distances[s.id];
+        return d == null ? double.infinity : d - 0.6 * (adjusted(s) - 4.0);
+      }
       list.sort((a, b) {
-        final da = _distances[a.id] ?? double.infinity;
-        final db = _distances[b.id] ?? double.infinity;
-        return da.compareTo(db);
+        final c = score(a).compareTo(score(b));
+        return c != 0 ? c : adjusted(b).compareTo(adjusted(a));
       });
+    } else {
+      list.sort((a, b) => adjusted(b).compareTo(adjusted(a)));
     }
     return list;
   }
@@ -649,7 +658,12 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ],
           ),
-          // Notification Bell
+          // Chat + Notification Bell
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ChatInboxButton(asOwner: false),
+              const SizedBox(width: 10),
           InkWell(
             onTap: _openNotifications,
             borderRadius: BorderRadius.circular(14),
@@ -715,6 +729,8 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
               ],
             ),
+          ),
+            ],
           ),
         ],
       ),
@@ -1752,8 +1768,8 @@ class _HomeScreenState extends State<HomeScreen>
                                       const SizedBox(width: 3),
                                       Text(
                                         shop.reviewCount > 0
-                                            ? '${shop.rating.toStringAsFixed(1)} (${shop.reviewCount})'
-                                            : (shop.rating > 0 ? shop.rating.toStringAsFixed(1) : 'Baru'),
+                                            ? '${shop.rating.toStringAsFixed(1).replaceAll('.', ',')} (${shop.reviewCount})'
+                                            : (shop.rating > 0 ? shop.rating.toStringAsFixed(1).replaceAll('.', ',') : 'Baru'),
                                         style: GoogleFonts.plusJakartaSans(
                                           color: const Color(0xFFB45309),
                                           fontSize: 11,

@@ -4,6 +4,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'outlet_settings_screen.dart';
+import 'revenue_report_screen.dart';
+import 'today_transactions_screen.dart';
+import 'service_history_screen.dart';
+import 'owner_promo_screen.dart';
+import 'chat_room_screen.dart';
+import 'owner_reviews_screen.dart';
+import 'receipt_print_screen.dart';
+import '../widgets/chat_widgets.dart';
 import '../widgets/washora_logo.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -601,6 +609,23 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               children: _statusOrder.map((s) => _buildStatusButton(s, order, ctx)).toList(),
             ),
             const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F172A),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => ReceiptPrintScreen(orderId: order.id)));
+                },
+                icon: const Icon(Icons.print_rounded),
+                label: Text('Cetak Resi', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -621,6 +646,28 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                     ),
                   ),
                 ),
+                // Chat di aplikasi hanya untuk pelanggan yang punya akun (bukan walk-in)
+                if (order.userId.isNotEmpty) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: Color(0xFF0077B6)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        openChatForOrder(context, order.id);
+                      },
+                      icon: const Icon(Icons.forum_outlined, color: Color(0xFF0077B6)),
+                      label: Text(
+                        'Chat Pelanggan',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF0077B6)),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 12),
@@ -1534,6 +1581,12 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                         // 3. MENU GRID
                         _buildMenuGrid(),
 
+                        const SizedBox(height: 12),
+
+                        // 3b. LAPORAN & RIWAYAT
+                        _buildReportShortcuts(),
+
+
                         const SizedBox(height: 18),
 
                         // 4. QUICK STATUS SUMMARY CARDS (GAMBAR 1)
@@ -1973,7 +2026,19 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       ],
                     ),
 
-                    // Logout Button
+                    // Chat pelanggan + Logout
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                    ChatInboxButton(
+                      asOwner: true,
+                      onDark: true,
+                      onNewMessage: (c) => _showSnack(
+                        'Pesan baru dari ${c.partnerName(c.ownerId)} (Pesanan #${c.orderCode})',
+                        color: const Color(0xFF0077B6),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -2010,6 +2075,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                           ),
                         ),
                       ),
+                    ),
+                      ],
                     ),
                   ],
                 ),
@@ -2354,55 +2421,73 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             crossAxisSpacing: 10,
             childAspectRatio: 0.82,
             children: [
+              // Warna = kelompok fungsi: biru transaksi, kuning keuangan,
+              // ungu outlet, tosca perangkat
               _buildMenuItem(
                 title: 'Order',
-                icon: Icons.shopping_cart_outlined,
-                color: const Color(0xFF0077B6),
+                icon: Icons.add_shopping_cart_rounded,
+                color: _menuBlue,
                 onTap: _showNewOrderDialog,
-              ),
-              _buildMenuItem(
-                title: 'List Order',
-                icon: Icons.receipt_long_outlined,
-                color: const Color(0xFF0284C7),
-                onTap: () {
-                  setState(() => _activeFilter = 'Semua');
-                },
-              ),
-              _buildMenuItem(
-                title: 'Petty Cash',
-                icon: Icons.account_balance_wallet_outlined,
-                color: const Color(0xFFD97706),
-                onTap: _showPettyCashModal,
-              ),
-              _buildMenuItem(
-                title: 'Report',
-                icon: Icons.insert_chart_outlined_rounded,
-                color: const Color(0xFF2563EB),
-                onTap: () => _showSnack('Laporan Omzet & Rekap Harian — segera hadir'),
               ),
               _buildMenuItem(
                 title: 'Customer',
                 icon: Icons.people_alt_outlined,
-                color: const Color(0xFF059669),
+                color: _menuBlue,
                 onTap: _showCustomerModal,
               ),
-              _buildMenuItem(
-                title: 'Mesin IoT',
-                icon: Icons.sensors_rounded,
-                color: const Color(0xFF0D9488),
-                onTap: _showIoTModal,
+              StreamBuilder<List<DamageClaim>>(
+                stream: _claimsStream,
+                builder: (context, snap) => _buildMenuItem(
+                  title: 'Klaim',
+                  icon: Icons.assignment_late_outlined,
+                  color: _menuBlue,
+                  badge: (snap.data ?? const <DamageClaim>[]).where((c) => c.isPending).length,
+                  onTap: () {
+                    final shop = _shop;
+                    if (shop == null) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => OwnerClaimsScreen(shopId: shop.id)),
+                    );
+                  },
+                ),
               ),
               _buildMenuItem(
-                title: 'Tarif Layanan',
-                icon: Icons.local_offer_outlined,
-                color: const Color(0xFF7C3AED),
-                onTap: () => _showShopSettingsModal(initialTab: 0),
+                title: 'Petty Cash',
+                icon: Icons.account_balance_wallet_outlined,
+                color: _menuAmber,
+                onTap: _showPettyCashModal,
+              ),
+              _buildMenuItem(
+                title: 'Promo',
+                icon: Icons.loyalty_outlined,
+                color: _menuAmber,
+                onTap: () {
+                  final shop = _shop;
+                  if (shop == null) return;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => OwnerPromoScreen(shop: shop)),
+                  );
+                },
+              ),
+              _buildMenuItem(
+                title: 'Info Outlet',
+                icon: Icons.storefront_outlined,
+                color: _menuViolet,
+                onTap: _openOutletSettings,
               ),
               _buildMenuItem(
                 title: 'Pengaturan',
                 icon: Icons.tune_rounded,
-                color: const Color(0xFF64748B),
-                onTap: () => _openOutletSettings(0),
+                color: _menuViolet,
+                onTap: () => _showShopSettingsModal(initialTab: 0),
+              ),
+              _buildMenuItem(
+                title: 'Mesin IoT',
+                icon: Icons.sensors_rounded,
+                color: _menuTeal,
+                onTap: _showIoTModal,
               ),
             ],
           ),
@@ -2411,43 +2496,203 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
+  /// Pintasan Laporan Omzet, Transaksi Hari Ini, Riwayat Layanan.
+  /// Keterangan tiap baris memakai angka asli dari pesanan outlet.
+  Widget _buildReportShortcuts() {
+    final shop = _shop;
+    if (shop == null) return const SizedBox.shrink();
+    final now = DateTime.now();
+    final today = _orders.where((o) => _isSameDay(o.createdAt, now)).toList();
+    final todayOmzet = today.where((o) => o.status != 'cancelled').fold<int>(0, (s, o) => s + o.totalPrice);
+    final weekStart = DateTime(now.year, now.month, now.day - 6);
+    final weekOmzet = _orders
+        .where((o) => o.status != 'cancelled' && !o.createdAt.isBefore(weekStart))
+        .fold<int>(0, (s, o) => s + o.totalPrice);
+    final served = _orders.where((o) => o.status == 'done' || o.status == 'delivered').length;
+
+    void open(Widget page) => Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+
+    Widget row(IconData icon, Color color, String title, String caption, VoidCallback onTap, {bool last = false}) {
+      final deep = Color.lerp(color, Colors.black, 0.18)!;
+      return Padding(
+        padding: EdgeInsets.only(bottom: last ? 0 : 8),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Ink(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [color.withValues(alpha: 0.12), color.withValues(alpha: 0.03)],
+                ),
+                border: Border.all(color: color.withValues(alpha: 0.18)),
+              ),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 60),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [color, deep],
+                        ),
+                      ),
+                      child: Icon(icon, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title,
+                              style: GoogleFonts.inter(fontSize: 13.5, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A))),
+                          const SizedBox(height: 2),
+                          Text(caption,
+                              style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color.lerp(color, const Color(0xFF334155), 0.5)),
+                              overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.7)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
+            child: Text('Laporan & Riwayat',
+                style: GoogleFonts.quicksand(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
+          ),
+          row(Icons.insert_chart_outlined_rounded, const Color(0xFF0077B6), 'Laporan Omzet',
+              '7 hari terakhir ${_formatRupiah(weekOmzet)}', () => open(RevenueReportScreen(shop: shop))),
+          row(Icons.receipt_long_outlined, const Color(0xFFD97706), 'Transaksi Hari Ini',
+              today.isEmpty ? 'Belum ada transaksi hari ini' : '${today.length} transaksi · ${_formatRupiah(todayOmzet)}',
+              () => open(TodayTransactionsScreen(shop: shop))),
+          row(Icons.history_rounded, const Color(0xFF15803D), 'Riwayat Layanan',
+              served == 0 ? 'Belum ada layanan selesai' : '$served layanan selesai dilayani',
+              () => open(ServiceHistoryScreen(shop: shop))),
+          row(Icons.star_rounded, const Color(0xFFD97706), 'Rating & Ulasan',
+              shop.reviewCount == 0
+                  ? 'Belum ada ulasan'
+                  : '${shop.rating.toStringAsFixed(1).replaceAll('.', ',')} dari ${shop.reviewCount} ulasan · balas & pantau',
+              () => open(OwnerReviewsScreen(shop: shop)), last: true),
+        ],
+      ),
+    );
+  }
+
+  static const _menuBlue = Color(0xFF0077B6);
+  static const _menuAmber = Color(0xFFD97706);
+  static const _menuViolet = Color(0xFF7C3AED);
+  static const _menuTeal = Color(0xFF0D9488);
+
   Widget _buildMenuItem({
     required String title,
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    int badge = 0,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.withValues(alpha: 0.18)),
+    final deep = Color.lerp(color, Colors.black, 0.18)!;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [color.withValues(alpha: 0.13), color.withValues(alpha: 0.04)],
             ),
-            child: Center(
-              child: Icon(icon, color: color, size: 24),
-            ),
+            border: Border.all(color: color.withValues(alpha: 0.20)),
           ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF334155),
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(13),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [color, deep],
+                      ),
+                    ),
+                    child: Icon(icon, color: Colors.white, size: 21),
+                  ),
+                  if (badge > 0)
+                    Positioned(
+                      top: -6,
+                      right: -8,
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDC2626),
+                          borderRadius: BorderRadius.circular(9),
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        child: Text(
+                          badge > 9 ? '9+' : '$badge',
+                          style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 7),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color.lerp(color, const Color(0xFF0F172A), 0.55),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -4562,8 +4807,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
-  /// Buka Pengaturan Outlet (0 = Info Outlet, 1 = Tarif & Layanan)
-  Future<void> _openOutletSettings(int tab) async {
+  /// Buka Info Outlet (foto profil, nama, kontak, alamat & lokasi)
+  Future<void> _openOutletSettings() async {
     final shop = _shop;
     if (shop == null) {
       _showSnack('Daftarkan outlet terlebih dahulu');
@@ -4571,7 +4816,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     }
     final updated = await Navigator.push<ShopModel>(
       context,
-      MaterialPageRoute(builder: (_) => OutletSettingsScreen(shop: shop, initialTab: tab)),
+      MaterialPageRoute(builder: (_) => OutletSettingsScreen(shop: shop)),
     );
     if (updated != null && mounted) setState(() => _shop = updated);
   }

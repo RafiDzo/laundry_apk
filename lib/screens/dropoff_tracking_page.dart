@@ -1,6 +1,7 @@
 import 'dart:async';
 import '../widgets/quick_snackbar.dart';
 
+import 'chat_room_screen.dart';
 import 'package:flutter/material.dart';
 import '../widgets/order_done_actions.dart';
 import 'package:flutter/services.dart';
@@ -839,7 +840,7 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
                           const Icon(Icons.star_rounded, size: 14, color: Color(0xFFF59E0B)),
                           const SizedBox(width: 3),
                           Text(
-                            rating.toStringAsFixed(1),
+                            rating.toStringAsFixed(1).replaceAll('.', ','),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -915,20 +916,10 @@ class _DropoffTrackingPageState extends State<DropoffTrackingPage>
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showQuickSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Menghubungi kasir $shopName...',
-                          style: GoogleFonts.plusJakartaSans(fontSize: 12),
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
+                  onPressed: () => openChatForOrder(context, widget.orderId, fromOrderPage: true),
                   icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Color(0xFF0F172A)),
                   label: Text(
-                    'Hubungi Kasir',
+                    'Chat Kasir',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,

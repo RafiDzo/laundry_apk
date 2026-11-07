@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/order_model.dart';
@@ -6,7 +7,6 @@ import '../models/review_model.dart';
 import '../screens/receipt_screen.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
-import 'quick_snackbar.dart';
 import 'review_sheet.dart';
 
 /// Bar tombol bawah untuk pesanan yang sudah selesai: Lihat Struk + Beri Ulasan.
@@ -20,6 +20,7 @@ class OrderDoneActions extends StatefulWidget {
 
 class _OrderDoneActionsState extends State<OrderDoneActions> {
   ReviewModel? _review;
+  bool _loaded = false;
 
   @override
   void initState() {
@@ -31,7 +32,28 @@ class _OrderDoneActionsState extends State<OrderDoneActions> {
     final user = AuthService().currentUser;
     if (user == null) return;
     final map = await SupabaseService().getMyReviewsByOrder(user.id);
-    if (mounted) setState(() => _review = map[widget.order.id]);
+    if (!mounted) return;
+    setState(() {
+      _review = map[widget.order.id];
+      _loaded = true;
+    });
+    _maybePrompt();
+  }
+
+  /// Pengingat sekali per pesanan: buka form rating otomatis saat pesanan
+  /// sudah diterima dan belum diulas.
+  Future<void> _maybePrompt() async {
+    if (_review != null || widget.order.status != 'delivered') return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'review_prompted_${widget.order.id}';
+      if (prefs.getBool(key) == true) return;
+      await prefs.setBool(key, true);
+    } catch (_) {
+      return; // tanpa penyimpanan lokal, jangan memunculkan pop-up berulang
+    }
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (mounted) _openReview();
   }
 
   Future<void> _openReview() async {
@@ -40,19 +62,8 @@ class _OrderDoneActionsState extends State<OrderDoneActions> {
       widget.order,
       existing: _review,
     );
-    if (!sent || !mounted) return;
-    await _load();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showQuickSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF16A34A),
-        content: Text(
-          'Terima kasih! Ulasanmu sudah tersimpan 🎉',
-          style: GoogleFonts.plusJakartaSans(fontSize: 13),
-        ),
-      ),
-    );
+    // Form sudah menampilkan "Terima kasih atas ulasanmu"; cukup muat ulang status tombol
+    if (sent && mounted) await _load();
   }
 
   @override
@@ -99,9 +110,11 @@ class _OrderDoneActionsState extends State<OrderDoneActions> {
                 onPressed: _openReview,
                 icon: const Icon(Icons.star_rounded, size: 18),
                 label: Text(
-                  _review == null
-                      ? 'Beri Ulasan'
-                      : 'Ulasanmu ${_review!.rating}★',
+                  !_loaded
+                      ? 'Beri Rating'
+                      : _review == null
+                          ? 'Beri Rating'
+                          : (_review!.canEdit ? 'Ubah rating ★${_review!.rating}' : 'Ratingmu ★${_review!.rating}'),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,

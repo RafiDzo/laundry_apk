@@ -53,13 +53,26 @@ class OrderModel {
   final DateTime? receivedAt;
   final String? receivedBy; // 'code' | 'customer' | 'walkin' | 'auto'
 
+  // Promo outlet yang dipakai saat checkout (lihat supabase_promo_checkout.sql)
+  final String? promoId;
+  final String? promoTitle;
+  final int discountAmount;
+
+  // Benefit member saat checkout (lihat supabase_langganan_benefit.sql)
+  final String? memberPlan;
+  final bool memberFreeDelivery;
+  final int pointsUsed;
+
   /// Batas waktu pelanggan boleh mengajukan klaim kerusakan setelah menerima cucian
   static const Duration claimWindow = Duration(hours: 48);
 
-  bool get canClaim =>
+  bool get canClaim => canClaimWithin(claimWindow.inHours);
+
+  /// Batas klaim mengikuti tingkat member (48 jam standar, 72 jam Silver, 7 hari Gold)
+  bool canClaimWithin(int hours) =>
       status == 'delivered' &&
       receivedAt != null &&
-      DateTime.now().isBefore(receivedAt!.add(claimWindow));
+      DateTime.now().isBefore(receivedAt!.add(Duration(hours: hours)));
 
   /// Urutan tahapan proses, dipakai halaman pelacakan pelanggan
   static const List<String> statusFlow = ['pending', 'washing', 'drying', 'done', 'delivered'];
@@ -101,6 +114,12 @@ class OrderModel {
     this.intakeAt,
     this.receivedAt,
     this.receivedBy,
+    this.promoId,
+    this.promoTitle,
+    this.discountAmount = 0,
+    this.memberPlan,
+    this.memberFreeDelivery = false,
+    this.pointsUsed = 0,
   });
 
   factory OrderModel.fromMap(Map<String, dynamic> data, String id) {
@@ -132,6 +151,12 @@ class OrderModel {
       intakeAt: data['intake_at'] != null ? DateTime.parse(data['intake_at']).toLocal() : null,
       receivedAt: data['received_at'] != null ? DateTime.parse(data['received_at']).toLocal() : null,
       receivedBy: data['received_by'],
+      promoId: data['promo_id'],
+      promoTitle: data['promo_title'],
+      discountAmount: (data['discount_amount'] as num?)?.toInt() ?? 0,
+      memberPlan: data['member_plan'],
+      memberFreeDelivery: data['member_free_delivery'] == true,
+      pointsUsed: (data['points_used'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -151,6 +176,12 @@ class OrderModel {
       if (customerPhone != null) 'customer_phone': customerPhone,
       // 'pickup' sudah jadi default di database, jadi hanya dikirim untuk drop-off
       if (isDropoff) 'delivery_type': deliveryType,
+      // Hanya dikirim jika memakai promo, agar pesanan tetap bisa dibuat
+      // walau kolom promo belum ada di database
+      if (promoId != null) 'promo_id': promoId,
+      if (promoId != null) 'discount_amount': discountAmount,
+      if (memberFreeDelivery) 'member_free_delivery': true,
+      if (pointsUsed > 0) 'points_used': pointsUsed,
     };
   }
 }

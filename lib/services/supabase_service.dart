@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../models/shop_model.dart';
@@ -113,6 +115,30 @@ class SupabaseService {
       print('Error updateShop: $e');
       return 'Gagal menyimpan. Periksa koneksi internet lalu coba lagi.';
     }
+  }
+
+  /// Unggah foto profil outlet ke storage publik 'shop-photos' lalu kembalikan URL-nya.
+  /// Path {shopId}/profile_{waktu}.{ext} — policy storage hanya mengizinkan pemilik outlet.
+  Future<String> uploadShopPhoto(String shopId, Uint8List bytes, {String mime = 'image/jpeg'}) async {
+    final ext = switch (mime) { 'image/png' => 'png', 'image/webp' => 'webp', _ => 'jpg' };
+    final path = '$shopId/profile_${DateTime.now().millisecondsSinceEpoch}.$ext';
+    try {
+      await _db.storage.from('shop-photos').uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: mime, upsert: true),
+          );
+    } on StorageException catch (e) {
+      final m = e.message.toLowerCase();
+      if (m.contains('bucket') && m.contains('not found')) {
+        throw Exception('Bucket not found: jalankan supabase_foto_outlet.sql');
+      }
+      if (e.statusCode == '403' || m.contains('row-level security')) {
+        throw Exception('Foto ditolak: akun yang login bukan pemilik outlet ini.');
+      }
+      throw Exception('Foto gagal diunggah: ${e.message}');
+    }
+    return _db.storage.from('shop-photos').getPublicUrl(path);
   }
 
   /// Daftarkan outlet baru milik owner yang sedang login (form "Daftarkan Outlet")
