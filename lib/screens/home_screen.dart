@@ -243,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen>
             });
           },
           onError: (e) {
-            print('Error stream notifikasi: $e');
+            debugPrint('Error stream notifikasi: $e');
             // Koneksi realtime terputus: sambung ulang otomatis
             _notifReconnectTimer?.cancel();
             _notifReconnectTimer = Timer(const Duration(seconds: 5), () {

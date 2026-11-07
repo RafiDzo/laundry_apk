@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_config.dart';
@@ -66,7 +66,7 @@ class AuthService {
           );
         } catch (e) {
           // Abaikan jika trigger DB sudah membuatnya lebih dulu
-          print('createUser notice: $e');
+          debugPrint('createUser notice: $e');
         }
       }
       // Session null = Supabase menunggu konfirmasi email
@@ -114,7 +114,7 @@ class AuthService {
             );
             profile = await _supabaseService.getUserProfile(response.user!.id);
           } catch (e) {
-            print('Auto-create profile error on signIn: $e');
+            debugPrint('Auto-create profile error on signIn: $e');
           }
         }
 
@@ -130,7 +130,7 @@ class AuthService {
         }
       }
     } on AuthException catch (e) {
-      print('signIn AuthException: ${e.statusCode} ${e.message}');
+      debugPrint('signIn AuthException: ${e.statusCode} ${e.message}');
       final msg = e.message.toLowerCase();
       if (e.code == 'email_not_confirmed' || msg.contains('email not confirmed')) {
         throw EmailNotConfirmedException(email);
@@ -138,7 +138,7 @@ class AuthService {
       throw _getCustomErrorMessage(e.message);
     } catch (e) {
       if (e is String || e is EmailNotConfirmedException) rethrow;
-      print('signIn error: $e');
+      debugPrint('signIn error: $e');
       throw 'Terjadi kesalahan sistem: $e';
     }
   }
@@ -148,7 +148,7 @@ class AuthService {
     try {
       await _auth.auth.resend(type: OtpType.signup, email: email);
     } on AuthException catch (e) {
-      print('resendConfirmationEmail: ${e.statusCode} ${e.message}');
+      debugPrint('resendConfirmationEmail: ${e.statusCode} ${e.message}');
       final msg = e.message.toLowerCase();
       if (e.statusCode == '429' ||
           msg.contains('rate limit') ||
@@ -215,7 +215,7 @@ class AuthService {
         redirectTo: kIsWeb ? Uri.base.origin : null,
       );
     } on AuthException catch (e) {
-      print('sendPasswordReset: ${e.statusCode} ${e.message}');
+      debugPrint('sendPasswordReset: ${e.statusCode} ${e.message}');
       final msg = e.message.toLowerCase();
       if (e.statusCode == '429' || msg.contains('rate limit') || msg.contains('security purposes')) {
         throw 'Terlalu sering meminta reset. Tunggu sekitar 1 menit lalu coba lagi.';
@@ -233,7 +233,7 @@ class AuthService {
     try {
       await _auth.auth.verifyOTP(type: OtpType.recovery, email: email, token: code);
     } on AuthException catch (e) {
-      print('verifyRecoveryCode: ${e.statusCode} ${e.message}');
+      debugPrint('verifyRecoveryCode: ${e.statusCode} ${e.message}');
       final msg = e.message.toLowerCase();
       if (msg.contains('expired') || msg.contains('invalid') || msg.contains('otp')) {
         throw 'Kode salah atau sudah kedaluwarsa. Minta kode baru.';

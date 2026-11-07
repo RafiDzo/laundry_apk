@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SeedData {
@@ -54,12 +55,12 @@ class SeedData {
         ];
 
         await db.from('shops').insert(initialShops);
-        print('✅ Seeding data toko berhasil dilakukan!');
+        debugPrint('✅ Seeding data toko berhasil dilakukan!');
       } else {
-        print('ℹ️ Data toko sudah ada di Supabase, melewati proses seeding.');
+        debugPrint('ℹ️ Data toko sudah ada di Supabase, melewati proses seeding.');
       }
     } catch (e) {
-      print('❌ Error saat seeding data: $e');
+      debugPrint('❌ Error saat seeding data: $e');
     }
   }
 }

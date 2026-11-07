@@ -655,6 +655,7 @@ class _LocationScreenState extends State<LocationScreen> with TickerProviderStat
                                   : _selectedCity != null
                                       ? 'Area $_selectedCity, Indonesia'
                                       : 'Jl. Merdeka No. 12, Menteng, Jakarta Pusat';
+                              final navigator = Navigator.of(context);
                               await AddressService.setFromRawAddress(
                                 label: label,
                                 address: address,
@@ -662,15 +663,13 @@ class _LocationScreenState extends State<LocationScreen> with TickerProviderStat
                                 latitude: _center.latitude,
                                 longitude: _center.longitude,
                               );
-                              if (context.mounted) {
-                                if (Navigator.canPop(context)) {
-                                  Navigator.pop(context, true);
-                                } else {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const HomeScreen()),
-                                  );
-                                }
+                              if (!mounted) return;
+                              if (navigator.canPop()) {
+                                navigator.pop(true);
+                              } else {
+                                navigator.pushReplacement(
+                                  MaterialPageRoute(builder: (context) => const HomeScreen()),
+                                );
                               }
                             },
                             borderRadius: BorderRadius.circular(16),

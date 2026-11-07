@@ -169,7 +169,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         }
       },
       onError: (e) {
-        print('Error stream pesanan toko: $e');
+        debugPrint('Error stream pesanan toko: $e');
         if (!mounted) return;
         setState(() {
           _isLoading = false;
@@ -871,73 +871,6 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
-  void _showDeleteAllCancelledConfirmation(List<OrderModel> cancelledOrders) {
-    showDialog(
-      context: context,
-      builder: (dlgCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFEF4444), size: 24),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Hapus Semua Dibatalkan?',
-                style: GoogleFonts.quicksand(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'Apakah Anda yakin ingin menghapus semua ${cancelledOrders.length} pesanan yang dibatalkan?\n\nSemua data pesanan ini akan dihapus permanen dari sistem.',
-          style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF334155), height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dlgCtx),
-            child: Text('Batal', style: GoogleFonts.inter(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              Navigator.pop(dlgCtx);
-              final shop = _shop;
-              if (shop == null) return;
-              final messenger = ScaffoldMessenger.of(context);
-              final cancelledIds = _orders.where((o) => o.status == 'cancelled').map((o) => o.id).toList();
-              final deletedCount = await _supabaseService.deleteCancelledOrders(shop.id);
-              if (deletedCount > 0 && mounted) _removeOrdersLocally(cancelledIds);
-              if (mounted) {
-                messenger.showQuickSnackBar(
-                  SnackBar(
-                    content: Text(deletedCount > 0
-                        ? '$deletedCount pesanan dibatalkan berhasil dihapus permanen.'
-                        : 'Tidak ada pesanan yang dihapus.'),
-                    backgroundColor: const Color(0xFFEF4444),
-                  ),
-                );
-              }
-            },
-            child: Text(
-              'Hapus Semua',
-              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   /// Pesan gagal ubah status yang menjelaskan penyebabnya. Penyebab paling umum:
   /// sesi login di browser berganti ke akun lain (mis. login pengguna di tab lain
@@ -1619,7 +1552,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       _listenOrders(shop);
       _showSnack('Outlet "${shop.name}" berhasil didaftarkan!', color: const Color(0xFF10B981));
     } catch (e) {
-      print('Error createMyShop: $e');
+      debugPrint('Error createMyShop: $e');
       if (!mounted) return;
       final msg = e.toString();
       setState(() {
@@ -2819,8 +2752,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     int currentStep = 0;
     if (order.status == 'washing') {
       currentStep = 1;
-    } else if (order.status == 'drying') currentStep = 2;
-    else if (order.status == 'done' || order.status == 'delivered') currentStep = 3;
+    } else if (order.status == 'drying') {
+      currentStep = 2;
+    } else if (order.status == 'done' || order.status == 'delivered') {
+      currentStep = 3;
+    }
 
     final isCancelled = order.status == 'cancelled';
 
@@ -3914,7 +3850,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 ),
                 Switch.adaptive(
                   value: srv.isActive,
-                  activeColor: const Color(0xFF0077B6),
+                  activeThumbColor: const Color(0xFF0077B6),
                   onChanged: (val) {
                     final list = List<ServiceModel>.from(services);
                     list[idx] = srv.copyWith(isActive: val);
@@ -3990,7 +3926,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               ),
               Switch.adaptive(
                 value: isOpen,
-                activeColor: const Color(0xFF10B981),
+                activeThumbColor: const Color(0xFF10B981),
                 onChanged: onOpenToggle,
               ),
             ],
@@ -4022,7 +3958,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       const SizedBox(width: 4),
                       Switch.adaptive(
                         value: is24Hours,
-                        activeColor: const Color(0xFF0077B6),
+                        activeThumbColor: const Color(0xFF0077B6),
                         onChanged: on24HoursToggle,
                       ),
                     ],
@@ -4245,7 +4181,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               ),
               Switch.adaptive(
                 value: isDeliveryEnabled,
-                activeColor: const Color(0xFF0077B6),
+                activeThumbColor: const Color(0xFF0077B6),
                 onChanged: onDeliveryToggle,
               ),
             ],

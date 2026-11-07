@@ -177,7 +177,7 @@ Future<bool> showIntakeSheet(BuildContext context, OrderModel order) async {
                   await service.saveIntake(orderId: order.id, itemCount: count, note: noteCtrl.text);
                   if (ctx.mounted) Navigator.pop(ctx, true);
                 } catch (e) {
-                  print('Error intake: $e');
+                  debugPrint('Error intake: $e');
                   final diag = isAccessDeniedError(e)
                       ? await service.diagnoseOwnerAccess(order.shopId)
                       : null;
@@ -301,7 +301,7 @@ Future<bool> showHandoverSheet(BuildContext context, OrderModel order) async {
                     };
                   });
                 } catch (e) {
-                  print('Error handover: $e');
+                  debugPrint('Error handover: $e');
                   final diag = isAccessDeniedError(e)
                       ? await service.diagnoseOwnerAccess(order.shopId)
                       : null;

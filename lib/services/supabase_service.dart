@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../models/shop_model.dart';
@@ -33,7 +34,7 @@ class SupabaseService {
         return UserModel.fromMap(data, uid);
       }
     } catch (e) {
-      print('Error getUserProfile: $e');
+      debugPrint('Error getUserProfile: $e');
     }
     return null;
   }
@@ -42,7 +43,7 @@ class SupabaseService {
     try {
       await _db.from('users').update(updates).eq('id', uid);
     } catch (e) {
-      print('Error updateUserProfile: $e');
+      debugPrint('Error updateUserProfile: $e');
     }
   }
 
@@ -53,7 +54,7 @@ class SupabaseService {
       final data = await _db.from('shops').select();
       return data.map<ShopModel>((row) => ShopModel.fromMap(row, row['id'])).toList();
     } catch (e) {
-      print('Error getShops: $e');
+      debugPrint('Error getShops: $e');
       return [];
     }
   }
@@ -65,7 +66,7 @@ class SupabaseService {
         return ShopModel.fromMap(data, data['id']);
       }
     } catch (e) {
-      print('Error getShopById: $e');
+      debugPrint('Error getShopById: $e');
     }
     return null;
   }
@@ -85,7 +86,7 @@ class SupabaseService {
         return ShopModel.fromMap(data, data['id']);
       }
     } catch (e) {
-      print('Error getMyShop: $e');
+      debugPrint('Error getMyShop: $e');
     }
     return null;
   }
@@ -102,7 +103,7 @@ class SupabaseService {
       }
       return null;
     } on PostgrestException catch (e) {
-      print('Error updateShop: ${e.code} ${e.message}');
+      debugPrint('Error updateShop: ${e.code} ${e.message}');
       if (e.code == '42703' || e.code == 'PGRST204') {
         return 'Kolom pengaturan belum ada di database. '
             'Jalankan supabase_pengaturan_outlet.sql di Supabase SQL Editor.';
@@ -110,7 +111,7 @@ class SupabaseService {
       if (e.code == '23514') return 'Ada nilai yang tidak valid (harga/ongkir tidak boleh minus).';
       return 'Gagal menyimpan: ${e.message}';
     } catch (e) {
-      print('Error updateShop: $e');
+      debugPrint('Error updateShop: $e');
       return 'Gagal menyimpan. Periksa koneksi internet lalu coba lagi.';
     }
   }
@@ -179,7 +180,7 @@ class SupabaseService {
           .limit(limit);
       return data.map<ReviewModel>(ReviewModel.fromMap).toList();
     } catch (e) {
-      print('Error getShopReviews: $e');
+      debugPrint('Error getShopReviews: $e');
       return [];
     }
   }
@@ -192,7 +193,7 @@ class SupabaseService {
         for (final row in data) row['order_id'].toString(): ReviewModel.fromMap(row),
       };
     } catch (e) {
-      print('Error getMyReviewsByOrder: $e');
+      debugPrint('Error getMyReviewsByOrder: $e');
       return {};
     }
   }
@@ -228,7 +229,7 @@ class SupabaseService {
 
   Future<String> createOrder(OrderModel order) async {
     try {
-      print('createOrder payload: ${order.toMap()}');
+      debugPrint('createOrder payload: ${order.toMap()}');
       final data = await _db
           .from('orders')
           .insert(order.toMap())
@@ -236,7 +237,7 @@ class SupabaseService {
           .single();
       return data['id'];
     } catch (e) {
-      print('Error createOrder: $e');
+      debugPrint('Error createOrder: $e');
       // Re-throw with the real error detail so UI can display it
       throw Exception(e.toString());
     }
@@ -266,7 +267,7 @@ class SupabaseService {
           .map<OrderModel>((row) => OrderModel.fromMap(row, row['id']))
           .toList();
     } catch (e) {
-      print('Error fetchUserOrders: $e');
+      debugPrint('Error fetchUserOrders: $e');
       return [];
     }
   }
@@ -304,12 +305,12 @@ class SupabaseService {
           .eq('id', orderId)
           .select('id');
       if (updated.isEmpty) {
-        print('Error updateOrderStatus: 0 baris berubah '
+        debugPrint('Error updateOrderStatus: 0 baris berubah '
             '(login sebagai ${_db.auth.currentUser?.email ?? 'TIDAK ADA SESI'})');
       }
       return updated.isNotEmpty;
     } catch (e) {
-      print('Error updateOrderStatus: $e');
+      debugPrint('Error updateOrderStatus: $e');
       return false;
     }
   }
@@ -324,11 +325,11 @@ class SupabaseService {
           .select('id');
       if (res.isEmpty) {
         // Supabase tidak melempar error saat RLS menolak DELETE — hanya 0 baris terhapus
-        print('Error deleteOrder: 0 baris terhapus (kemungkinan policy DELETE belum ada)');
+        debugPrint('Error deleteOrder: 0 baris terhapus (kemungkinan policy DELETE belum ada)');
       }
       return res.isNotEmpty;
     } catch (e) {
-      print('Error deleteOrder: $e');
+      debugPrint('Error deleteOrder: $e');
       return false;
     }
   }
@@ -343,11 +344,11 @@ class SupabaseService {
           .eq('status', 'cancelled')
           .select('id');
       if (res.isEmpty) {
-        print('Error deleteCancelledOrders: 0 baris terhapus (tidak ada pesanan batal, atau policy DELETE belum ada)');
+        debugPrint('Error deleteCancelledOrders: 0 baris terhapus (tidak ada pesanan batal, atau policy DELETE belum ada)');
       }
       return res.length;
     } catch (e) {
-      print('Error deleteCancelledOrders: $e');
+      debugPrint('Error deleteCancelledOrders: $e');
       return 0;
     }
   }
@@ -358,7 +359,7 @@ class SupabaseService {
       final data = await _db.from('orders').select().eq('id', orderId).maybeSingle();
       if (data != null) return OrderModel.fromMap(data, data['id']);
     } catch (e) {
-      print('Error getOrderById: $e');
+      debugPrint('Error getOrderById: $e');
     }
     return null;
   }
@@ -381,7 +382,7 @@ class SupabaseService {
     try {
       await _db.from('notifications').update({'is_read': true}).eq('id', notificationId);
     } catch (e) {
-      print('Error markNotificationRead: $e');
+      debugPrint('Error markNotificationRead: $e');
     }
   }
 
@@ -393,7 +394,7 @@ class SupabaseService {
           .eq('user_id', userId)
           .eq('is_read', false);
     } catch (e) {
-      print('Error markAllNotificationsRead: $e');
+      debugPrint('Error markAllNotificationsRead: $e');
     }
   }
 
@@ -408,7 +409,7 @@ class SupabaseService {
           .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(data);
     } catch (e) {
-      print('Error getPettyCash: $e');
+      debugPrint('Error getPettyCash: $e');
       return [];
     }
   }
