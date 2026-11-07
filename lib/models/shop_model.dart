@@ -12,6 +12,14 @@ class ShopModel {
   final int pricePerKg;
   final List<ServiceModel> services;
   final String? ownerId;
+  final double? latitude;
+  final double? longitude;
+  final int reviewCount;
+  final String phone;
+  final String description;
+  final bool isOpen;
+
+  bool get hasLocation => latitude != null && longitude != null;
 
   // Layanan Antar Jemput & Operasional
   final bool isDeliveryAvailable;
@@ -20,7 +28,6 @@ class ShopModel {
   final double deliveryRadiusKm;
   final int minDeliveryOrder;
   final String operationalDays;
-  final bool isOpen;
 
   ShopModel({
     required this.id,
@@ -34,6 +41,11 @@ class ShopModel {
     required this.pricePerKg,
     this.services = const [],
     this.ownerId,
+    this.latitude,
+    this.longitude,
+    this.reviewCount = 0,
+    this.phone = '',
+    this.description = '',
     this.isDeliveryAvailable = true,
     this.deliveryFee = 5000,
     this.deliveryFeeType = 'flat',
@@ -55,6 +67,11 @@ class ShopModel {
     int? pricePerKg,
     List<ServiceModel>? services,
     String? ownerId,
+    double? latitude,
+    double? longitude,
+    int? reviewCount,
+    String? phone,
+    String? description,
     bool? isDeliveryAvailable,
     int? deliveryFee,
     String? deliveryFeeType,
@@ -75,6 +92,11 @@ class ShopModel {
       pricePerKg: pricePerKg ?? this.pricePerKg,
       services: services ?? this.services,
       ownerId: ownerId ?? this.ownerId,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      reviewCount: reviewCount ?? this.reviewCount,
+      phone: phone ?? this.phone,
+      description: description ?? this.description,
       isDeliveryAvailable: isDeliveryAvailable ?? this.isDeliveryAvailable,
       deliveryFee: deliveryFee ?? this.deliveryFee,
       deliveryFeeType: deliveryFeeType ?? this.deliveryFeeType,
@@ -104,6 +126,11 @@ class ShopModel {
       pricePerKg: data['price_per_kg'] ?? data['pricePerKg'] ?? 0,
       services: servicesList,
       ownerId: data['owner_id'],
+      latitude: (data['latitude'] as num?)?.toDouble(),
+      longitude: (data['longitude'] as num?)?.toDouble(),
+      reviewCount: (data['review_count'] as num?)?.toInt() ?? 0,
+      phone: data['phone'] ?? '',
+      description: data['description'] ?? '',
       isDeliveryAvailable: data['is_delivery_available'] ?? data['isDeliveryAvailable'] ?? true,
       deliveryFee: (data['delivery_fee'] ?? data['deliveryFee'] ?? 5000) as int,
       deliveryFeeType: data['delivery_fee_type'] ?? data['deliveryFeeType'] ?? 'flat',

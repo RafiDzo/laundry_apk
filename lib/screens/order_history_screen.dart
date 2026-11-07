@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/order_model.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import 'dropoff_tracking_page.dart';
 import 'order_tracking_page.dart';
+import 'receipt_screen.dart';
+import '../models/review_model.dart';
+import '../widgets/review_sheet.dart';
 
 const _blue = Color(0xFF0077E6);
 const _surface = Color(0xFFF8FAFC);
@@ -56,13 +60,18 @@ Future<void> openActiveOrderTracking(BuildContext context) async {
 
   final active = orders.where((o) => o.isActive).toList();
   if (active.isEmpty) {
-    messenger.showSnackBar(
+    messenger.showQuickSnackBar(
       SnackBar(
         content: Text(
           'Tidak ada pesanan aktif yang sedang diproses.',
-          style: GoogleFonts.plusJakartaSans(fontSize: 13),
+          style: GoogleFonts.plusJakartaSans(fontSize: 12),
         ),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        elevation: 4,
+        duration: const Duration(seconds: 4),
         action: SnackBarAction(
           label: 'Riwayat',
           onPressed: () => Navigator.push(
@@ -134,7 +143,10 @@ class OrderCard extends StatelessWidget {
   final OrderModel order;
   final VoidCallback onTap;
 
-  const OrderCard({super.key, required this.order, required this.onTap});
+  /// Tombol tambahan di bawah kartu (mis. Struk & Ulasan di Riwayat)
+  final Widget? footer;
+
+  const OrderCard({super.key, required this.order, required this.onTap, this.footer});
 
   @override
   Widget build(BuildContext context) {
@@ -226,6 +238,10 @@ class OrderCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (footer != null) ...[
+              const SizedBox(height: 12),
+              footer!,
+            ],
           ],
         ),
       ),
@@ -245,12 +261,77 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   static const _filters = ['Semua', 'Aktif', 'Selesai', 'Dibatalkan'];
   String _activeFilter = 'Semua';
   Stream<List<OrderModel>>? _ordersStream;
+  Map<String, ReviewModel> _myReviews = {};
 
   @override
   void initState() {
     super.initState();
     final user = AuthService().currentUser;
-    if (user != null) _ordersStream = SupabaseService().getUserOrders(user.id);
+    if (user != null) {
+      _ordersStream = SupabaseService().getUserOrders(user.id);
+      _loadMyReviews();
+    }
+  }
+
+  Future<void> _loadMyReviews() async {
+    final user = AuthService().currentUser;
+    if (user == null) return;
+    final map = await SupabaseService().getMyReviewsByOrder(user.id);
+    if (mounted) setState(() => _myReviews = map);
+  }
+
+  Future<void> _review(OrderModel order) async {
+    final sent = await showReviewSheet(context, order, existing: _myReviews[order.id]);
+    if (!sent || !mounted) return;
+    await _loadMyReviews();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showQuickSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF16A34A),
+        content: Text('Terima kasih! Ulasanmu sudah tersimpan 🎉', style: GoogleFonts.plusJakartaSans(fontSize: 13)),
+      ),
+    );
+  }
+
+  Widget? _buildFooter(OrderModel order) {
+    if (order.isCancelled) return null;
+    final done = order.status == 'delivered';
+    final review = _myReviews[order.id];
+    return Row(
+      children: [
+        Expanded(
+          child: _FooterButton(
+            icon: Icons.receipt_long_rounded,
+            label: 'Lihat Struk',
+            color: _blue,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ReceiptScreen(order: order)),
+            ),
+          ),
+        ),
+        if (done) ...[
+          const SizedBox(width: 8),
+          Expanded(
+            child: review == null
+                ? _FooterButton(
+                    icon: Icons.star_rounded,
+                    label: 'Beri Ulasan',
+                    color: const Color(0xFFD97706),
+                    filled: true,
+                    onTap: () => _review(order),
+                  )
+                : _FooterButton(
+                    icon: Icons.star_rounded,
+                    label: 'Ulasanmu ${review.rating}★',
+                    color: const Color(0xFFD97706),
+                    onTap: () => _review(order),
+                  ),
+          ),
+        ],
+      ],
+    );
   }
 
   List<OrderModel> _applyFilter(List<OrderModel> orders) {
@@ -359,6 +440,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                               itemBuilder: (_, i) => OrderCard(
                                 order: orders[i],
                                 onTap: () => openOrderTracking(context, orders[i]),
+                                footer: _buildFooter(orders[i]),
                               ),
                             );
                           },
@@ -387,6 +469,52 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
               style: GoogleFonts.plusJakartaSans(fontSize: 13, color: _textLight),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FooterButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool filled;
+  final VoidCallback onTap;
+
+  const _FooterButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.filled = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: filled ? color : color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: filled ? Colors.white : color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: filled ? Colors.white : color,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import '../widgets/washora_logo.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import 'signup_screen.dart';
+import 'forgot_password_screen.dart';
 import 'location_screen.dart';
 import 'home_screen.dart';
 import 'owner_dashboard_screen.dart';
@@ -61,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showQuickSnackBar(
         SnackBar(
           content: Text(
             'Email dan password harus diisi!',
@@ -111,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showQuickSnackBar(
           SnackBar(
             content: Text(e.toString(), style: GoogleFonts.inter()),
             backgroundColor: const Color(0xFFDC2626),
@@ -203,12 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ],
                               ),
                               child: Center(
-                                child: CustomPaint(
-                                  size: const Size(56, 56), // w-14 h-14
-                                  painter: _LaundryLogoPainter(
-                                    color: primaryColor,
-                                  ),
-                                ),
+                                child: const WashoraLogo(size: 60),
                               ),
                             ),
                             Text(
@@ -281,9 +279,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                             GestureDetector(
-                              onTap: () {},
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ForgotPasswordScreen(
+                                    initialEmail: _emailController.text.trim(),
+                                  ),
+                                ),
+                              ),
                               child: Text(
-                                'Forgot Password?',
+                                'Lupa Password?',
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
@@ -338,7 +343,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Sign up link
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 32),
+                          padding: const EdgeInsets.only(bottom: 24),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -370,17 +375,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-
-                        // Bottom Line
-                        Container(
-                          width: 128,
-                          height: 4,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE2E8F0), // bg-slate-200
-                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                       ],
@@ -594,7 +588,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       }
                     } catch (e) {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        ScaffoldMessenger.of(context).showQuickSnackBar(
                           SnackBar(
                             content: Text(
                               e.toString(),
@@ -649,110 +643,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-}
-
-class _LaundryLogoPainter extends CustomPainter {
-  final Color color;
-  _LaundryLogoPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    final scale = size.width / 100;
-
-    // Shirt shape
-    final shirtPath = Path();
-    shirtPath.moveTo(25 * scale, 32 * scale);
-    shirtPath.lineTo(35 * scale, 28 * scale);
-    shirtPath.lineTo(50 * scale, 33 * scale);
-    shirtPath.lineTo(65 * scale, 28 * scale);
-    shirtPath.lineTo(75 * scale, 32 * scale);
-    shirtPath.lineTo(70 * scale, 42 * scale);
-    shirtPath.lineTo(63 * scale, 38 * scale);
-    shirtPath.lineTo(65 * scale, 55 * scale);
-    shirtPath.cubicTo(
-      65 * scale,
-      55 * scale,
-      68 * scale,
-      62 * scale,
-      60 * scale,
-      62 * scale,
-    );
-    shirtPath.lineTo(40 * scale, 62 * scale);
-    shirtPath.cubicTo(
-      32 * scale,
-      62 * scale,
-      35 * scale,
-      55 * scale,
-      35 * scale,
-      55 * scale,
-    );
-    shirtPath.lineTo(37 * scale, 38 * scale);
-    shirtPath.lineTo(30 * scale, 42 * scale);
-    shirtPath.close();
-    canvas.drawPath(shirtPath, paint);
-
-    // Sparkle
-    final sparklePath = Path();
-    sparklePath.moveTo(58 * scale, 35 * scale);
-    sparklePath.lineTo(60 * scale, 31 * scale);
-    sparklePath.lineTo(62 * scale, 35 * scale);
-    sparklePath.lineTo(66 * scale, 37 * scale);
-    sparklePath.lineTo(62 * scale, 39 * scale);
-    sparklePath.lineTo(60 * scale, 43 * scale);
-    sparklePath.lineTo(58 * scale, 39 * scale);
-    sparklePath.lineTo(54 * scale, 37 * scale);
-    sparklePath.close();
-    canvas.drawPath(sparklePath, paint);
-
-    // Smile arc
-    final smilePath = Path();
-    smilePath.moveTo(22 * scale, 65 * scale);
-    smilePath.cubicTo(
-      22 * scale,
-      65 * scale,
-      30 * scale,
-      78 * scale,
-      50 * scale,
-      78 * scale,
-    );
-    smilePath.cubicTo(
-      70 * scale,
-      78 * scale,
-      78 * scale,
-      65 * scale,
-      78 * scale,
-      65 * scale,
-    );
-    smilePath.lineTo(76 * scale, 68 * scale);
-    smilePath.cubicTo(
-      76 * scale,
-      68 * scale,
-      68 * scale,
-      82 * scale,
-      50 * scale,
-      82 * scale,
-    );
-    smilePath.cubicTo(
-      32 * scale,
-      82 * scale,
-      24 * scale,
-      68 * scale,
-      24 * scale,
-      68 * scale,
-    );
-    smilePath.close();
-    canvas.drawPath(smilePath, paint);
-
-    // Bubbles
-    canvas.drawCircle(Offset(25 * scale, 55 * scale), 2.5 * scale, paint);
-    canvas.drawCircle(Offset(75 * scale, 52 * scale), 3 * scale, paint);
-    canvas.drawCircle(Offset(65 * scale, 70 * scale), 1.5 * scale, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

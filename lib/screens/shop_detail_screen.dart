@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import '../models/review_model.dart';
+import '../services/supabase_service.dart';
+import '../services/auth_service.dart';
+import '../widgets/review_sheet.dart';
+import '../widgets/quick_snackbar.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'order_detail_screen.dart';
@@ -20,6 +25,31 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
   String _selectedSpeed = 'Reguler'; // 'Reguler' or 'Express'
 
   late AnimationController _selectionPulseController;
+
+  // ── Ulasan (dari tabel reviews di Supabase) ───────────────────
+  List<ReviewModel> _reviews = [];
+  bool _loadingReviews = true;
+
+  String get _shopId => widget.laundry['id']?.toString() ?? '';
+
+  /// Rata-rata & jumlah ulasan: dari data ulasan, atau dari kolom outlet
+  double get _avgRating {
+    if (_reviews.isNotEmpty) {
+      return _reviews.fold<int>(0, (s, r) => s + r.rating) / _reviews.length;
+    }
+    return (widget.laundry['rating'] as num?)?.toDouble() ?? 0;
+  }
+
+  int get _reviewCount {
+    final stored = (widget.laundry['reviewCount'] as num?)?.toInt() ?? 0;
+    return _reviews.length > stored ? _reviews.length : stored;
+  }
+
+  String get _ratingText {
+    if (_reviewCount == 0 && _avgRating == 0) return 'Belum ada ulasan';
+    if (_reviewCount == 0) return _avgRating.toStringAsFixed(1);
+    return '${_avgRating.toStringAsFixed(1)} ($_reviewCount Ulasan)';
+  }
 
   // Diisi di initState: dari layanan outlet di database, atau katalog default
   late final List<Map<String, dynamic>> _allServices;
@@ -150,6 +180,20 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
+    _loadReviews();
+  }
+
+  Future<void> _loadReviews() async {
+    if (_shopId.isEmpty || _shopId.startsWith('dummy-')) {
+      setState(() => _loadingReviews = false);
+      return;
+    }
+    final list = await SupabaseService().getShopReviews(_shopId);
+    if (!mounted) return;
+    setState(() {
+      _reviews = list;
+      _loadingReviews = false;
+    });
   }
 
   @override
@@ -263,7 +307,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
 
   void _showToast(String message) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showQuickSnackBar(
       SnackBar(
         content: Text(
           message,
@@ -504,7 +548,6 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
     final name = widget.laundry['name'] as String? ?? 'CleanPro Kemang';
     final imageUrl = widget.laundry['imageUrl'] as String? ??
         'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=800&auto=format&fit=crop&q=80';
-    final rating = widget.laundry['rating']?.toString() ?? '4.9';
 
     return SizedBox(
       height: 250,
@@ -647,7 +690,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
                           const Icon(Icons.star_rounded, size: 14, color: Color(0xFFD97706)),
                           const SizedBox(width: 3),
                           Text(
-                            '$rating (128 Ulasan)',
+                            _ratingText,
                             style: GoogleFonts.plusJakartaSans(
                               color: const Color(0xFFB45309),
                               fontSize: 11,
@@ -1381,31 +1424,211 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
   // ═══════════════════════════════════════════════
   //  7. CUSTOMER REVIEWS SECTION
   // ═══════════════════════════════════════════════
-  Widget _buildCustomerReviews() {
-    final reviews = [
-      {
-        'name': 'Sarah Meliana',
-        'avatar': 'S',
-        'stars': 5,
-        'tag': 'Cuci Komplit • Kemarin',
-        'text': 'Wanginya tahan berhari-hari dan baju putih tidak kusam. Kurirnya ramah dan tepat waktu!',
-      },
-      {
-        'name': 'Budi Santoso',
-        'avatar': 'B',
-        'stars': 5,
-        'tag': 'Dry Clean Jas • 3 hari lalu',
-        'text': 'Hasil dry clean jas kantor sangat rapi dan tanpa kusut. Recommended buat yang butuh cepat.',
-      },
-      {
-        'name': 'Amanda Putri',
-        'avatar': 'A',
-        'stars': 4,
-        'tag': 'Bed Cover King • 5 hari lalu',
-        'text': 'Bed cover king dibungkus plastik tebal berzipper, harum dan bersih sampai ke sudutnya.',
-      },
-    ];
 
+  /// Ulasan hanya bisa ditulis untuk pesanan di outlet ini yang sudah selesai
+  Future<void> _writeReview() async {
+    final user = AuthService().currentUser;
+    if (user == null) {
+      _showToast('Login dulu untuk menulis ulasan');
+      return;
+    }
+    final service = SupabaseService();
+    final orders = await service.fetchUserOrders(user.id);
+    final reviewed = await service.getMyReviewsByOrder(user.id);
+    if (!mounted) return;
+    final eligible = orders
+        .where((o) => o.shopId == _shopId && o.status == 'delivered' && !reviewed.containsKey(o.id))
+        .toList();
+    if (eligible.isEmpty) {
+      final hasReviewed = orders.any((o) => o.shopId == _shopId && reviewed.containsKey(o.id));
+      _showToast(hasReviewed
+          ? 'Semua pesananmu di outlet ini sudah kamu ulas. Terima kasih! 🙏'
+          : 'Ulasan bisa ditulis setelah pesananmu di outlet ini selesai.');
+      return;
+    }
+    final sent = await showReviewSheet(context, eligible.first);
+    if (sent && mounted) {
+      _showToast('Ulasan kamu berhasil dikirim! 🎉');
+      _loadReviews();
+    }
+  }
+
+  Widget _buildRatingSummary() {
+    final counts = List<int>.filled(6, 0);
+    for (final r in _reviews) {
+      if (r.rating >= 1 && r.rating <= 5) counts[r.rating]++;
+    }
+    final total = _reviews.length;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Column(
+            children: [
+              Text(
+                _avgRating.toStringAsFixed(1),
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 34, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A), height: 1),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: List.generate(5, (i) {
+                  final v = _avgRating - i;
+                  return Icon(
+                    v >= 0.75
+                        ? Icons.star_rounded
+                        : (v >= 0.25 ? Icons.star_half_rounded : Icons.star_outline_rounded),
+                    size: 14,
+                    color: const Color(0xFFFBBF24),
+                  );
+                }),
+              ),
+              const SizedBox(height: 4),
+              Text('$total ulasan', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0xFF64748B))),
+            ],
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              children: [
+                for (var star = 5; star >= 1; star--)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 12,
+                          child: Text('$star',
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF475569))),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: total == 0 ? 0 : counts[star] / total,
+                              minHeight: 7,
+                              backgroundColor: const Color(0xFFF1F5F9),
+                              color: const Color(0xFFFBBF24),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 18,
+                          child: Text('${counts[star]}',
+                              textAlign: TextAlign.right,
+                              style: GoogleFonts.plusJakartaSans(fontSize: 10.5, color: const Color(0xFF94A3B8))),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewCard(ReviewModel r) {
+    return Container(
+      width: 260,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: const Color(0xFF0077E6),
+                child: Text(
+                  r.initial,
+                  style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      r.userName,
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      [if (r.serviceSummary.isNotEmpty) r.serviceSummary, r.timeAgo].join(' • '),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 10, color: const Color(0xFF94A3B8)),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(
+                  5,
+                  (i) => Icon(
+                    i < r.rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                    size: 13,
+                    color: const Color(0xFFFBBF24),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (r.tags.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                r.tags.take(3).map((t) => '#${t.replaceAll(' ', '')}').join('  '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF0077E6)),
+              ),
+            ),
+          Expanded(
+            child: Text(
+              r.comment.isNotEmpty ? r.comment : 'Memberi ${r.rating} bintang tanpa komentar.',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: r.comment.isNotEmpty ? const Color(0xFF475569) : const Color(0xFF94A3B8),
+                fontStyle: r.comment.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                height: 1.4,
+              ),
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerReviews() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1425,7 +1648,7 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
                 const Icon(Icons.star_rounded, size: 16, color: Color(0xFFD97706)),
                 const SizedBox(width: 4),
                 Text(
-                  '4.9 (128 ulasan)',
+                  _ratingText,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -1437,95 +1660,66 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
           ],
         ),
         const SizedBox(height: 12),
+        if (_loadingReviews)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0077E6))),
+          )
+        else if (_reviews.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.rate_review_outlined, size: 36, color: Color(0xFFCBD5E1)),
+                const SizedBox(height: 8),
+                Text('Belum ada ulasan',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                const SizedBox(height: 2),
+                Text('Jadilah yang pertama mengulas outlet ini setelah pesananmu selesai.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11.5, color: const Color(0xFF94A3B8))),
+              ],
+            ),
+          )
+        else ...[
+          _buildRatingSummary(),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 158,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              clipBehavior: Clip.none,
+              padding: const EdgeInsets.only(right: 4),
+              itemCount: _reviews.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 12),
+              itemBuilder: (context, index) => _buildReviewCard(_reviews[index]),
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
         SizedBox(
-          height: 140,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: reviews.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final r = reviews[index];
-              return Container(
-                width: 260,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 14,
-                          backgroundColor: const Color(0xFF0077E6),
-                          child: Text(
-                            r['avatar'] as String,
-                            style: GoogleFonts.plusJakartaSans(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                r['name'] as String,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF0F172A),
-                                ),
-                              ),
-                              Text(
-                                r['tag'] as String,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
-                                  color: const Color(0xFF94A3B8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Row(
-                          children: List.generate(
-                            r['stars'] as int,
-                            (i) => const Icon(Icons.star_rounded, size: 13, color: Color(0xFFFBBF24)),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: Text(
-                        r['text'] as String,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: const Color(0xFF475569),
-                          height: 1.35,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _writeReview,
+            icon: const Icon(Icons.edit_rounded, size: 16),
+            label: Text(
+              'Tulis Ulasan Kamu',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF0077E6),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              side: const BorderSide(color: Color(0xFF0077E6), width: 1.5),
+            ),
           ),
         ),
       ],

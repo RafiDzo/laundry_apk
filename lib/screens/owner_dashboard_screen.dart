@@ -1,7 +1,10 @@
 import 'dart:async';
+import '../widgets/quick_snackbar.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'outlet_settings_screen.dart';
+import '../widgets/washora_logo.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -233,7 +236,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   }
 
   void _showSnack(String message, {Color? color}) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showQuickSnackBar(
       SnackBar(content: Text(message), backgroundColor: color),
     );
   }
@@ -848,7 +851,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               final success = await _supabaseService.deleteOrder(order.id);
               if (success && mounted) _removeOrdersLocally([order.id]);
               if (mounted) {
-                messenger.showSnackBar(
+                messenger.showQuickSnackBar(
                   SnackBar(
                     content: Text(success
                         ? 'Pesanan #${_orderCode(order)} berhasil dihapus permanen.'
@@ -916,7 +919,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               final deletedCount = await _supabaseService.deleteCancelledOrders(shop.id);
               if (deletedCount > 0 && mounted) _removeOrdersLocally(cancelledIds);
               if (mounted) {
-                messenger.showSnackBar(
+                messenger.showQuickSnackBar(
                   SnackBar(
                     content: Text(deletedCount > 0
                         ? '$deletedCount pesanan dibatalkan berhasil dihapus permanen.'
@@ -964,14 +967,14 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         if (status == 'delivered') {
           if (ctx.mounted) Navigator.pop(ctx);
           if (order.status != 'done') {
-            messenger.showSnackBar(const SnackBar(
+            messenger.showQuickSnackBar(const SnackBar(
               content: Text('Ubah status ke "Selesai" dulu sebelum serah terima ke pelanggan.'),
             ));
             return;
           }
           final ok = await showHandoverSheet(context, order);
           if (ok) {
-            messenger.showSnackBar(const SnackBar(
+            messenger.showQuickSnackBar(const SnackBar(
               content: Text('Serah terima tercatat. Pesanan diterima pelanggan.'),
               backgroundColor: Color(0xFF10B981),
             ));
@@ -988,7 +991,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
 
         final success = await _supabaseService.updateOrderStatus(order.id, status);
         if (ctx.mounted) Navigator.pop(ctx);
-        messenger.showSnackBar(
+        messenger.showQuickSnackBar(
           SnackBar(
             content: Text(success
                 ? 'Status pesanan diubah ke ${_statusLabel(status)}'
@@ -1939,11 +1942,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                             ],
                           ),
                           child: const Center(
-                            child: Icon(
-                              Icons.local_laundry_service_rounded,
-                              color: Color(0xFF0091EA),
-                              size: 26,
-                            ),
+                            child: WashoraLogo(size: 30),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -2403,7 +2402,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 title: 'Pengaturan',
                 icon: Icons.tune_rounded,
                 color: const Color(0xFF64748B),
-                onTap: () => _showShopSettingsModal(initialTab: 1),
+                onTap: () => _openOutletSettings(0),
               ),
             ],
           ),
@@ -4561,6 +4560,20 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         ],
       ),
     );
+  }
+
+  /// Buka Pengaturan Outlet (0 = Info Outlet, 1 = Tarif & Layanan)
+  Future<void> _openOutletSettings(int tab) async {
+    final shop = _shop;
+    if (shop == null) {
+      _showSnack('Daftarkan outlet terlebih dahulu');
+      return;
+    }
+    final updated = await Navigator.push<ShopModel>(
+      context,
+      MaterialPageRoute(builder: (_) => OutletSettingsScreen(shop: shop, initialTab: tab)),
+    );
+    if (updated != null && mounted) setState(() => _shop = updated);
   }
 
   IconData _serviceIcon(String name) {

@@ -1,6 +1,8 @@
 import 'dart:async';
+import '../widgets/quick_snackbar.dart';
 
 import 'package:flutter/material.dart';
+import '../widgets/order_done_actions.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 import '../models/order_model.dart';
@@ -659,7 +661,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
             ),
             child: IconButton(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showQuickSnackBar(
                   SnackBar(
                     content: Text(
                       'Chat dengan outlet akan segera hadir.',
@@ -925,6 +927,8 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
   }
 
   Widget _buildBottomActions() {
+    final order = _order;
+    if (order != null && order.status == 'delivered') return OrderDoneActions(order: order);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: const BoxDecoration(
@@ -955,7 +959,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
           Expanded(
             child: ElevatedButton.icon(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showQuickSnackBar(
                   SnackBar(
                     content: Text(
                       'Menghubungkan ke layanan bantuan kurir Washora...',

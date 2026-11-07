@@ -5,8 +5,8 @@ class ServiceModel {
   final int price;
   final String unit; // '/ kg' atau '/ pcs'
   final String iconName;
-  final bool isActive;
-  final String duration;
+  final bool isActive; // false = disembunyikan dari pelanggan
+  final String duration; // mis. '1-2 Hari', '4 Jam' (opsional)
 
   ServiceModel({
     required this.id,
@@ -16,7 +16,7 @@ class ServiceModel {
     required this.unit,
     required this.iconName,
     this.isActive = true,
-    this.duration = '1-2 Hari',
+    this.duration = '',
   });
 
   ServiceModel copyWith({
@@ -50,7 +50,7 @@ class ServiceModel {
       unit: data['unit'] ?? '/ kg',
       iconName: data['iconName'] ?? 'local_laundry_service',
       isActive: data['isActive'] ?? data['is_active'] ?? true,
-      duration: data['duration'] ?? '1-2 Hari',
+      duration: data['duration'] ?? '',
     );
   }
 
@@ -63,7 +63,7 @@ class ServiceModel {
       'unit': unit,
       'iconName': iconName,
       'isActive': isActive,
-      'duration': duration,
+      if (duration.isNotEmpty) 'duration': duration,
     };
   }
 }

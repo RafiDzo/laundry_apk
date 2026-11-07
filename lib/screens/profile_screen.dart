@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../widgets/quick_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -183,15 +184,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showToast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context).showQuickSnackBar(
       SnackBar(
         content: Text(
           msg,
-          style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.white),
+          style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.white),
         ),
         backgroundColor: const Color(0xFF0077E6),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        elevation: 4,
+        duration: const Duration(seconds: 3),
       ),
     );
   }

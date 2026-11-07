@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'quick_snackbar.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -51,7 +52,7 @@ class _PhotoPickerFieldState extends State<PhotoPickerField> {
       widget.onChanged([...widget.photos, ...picked.take(remaining)]);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showQuickSnackBar(
         SnackBar(content: Text('Tidak dapat mengambil foto: $e')),
       );
     }

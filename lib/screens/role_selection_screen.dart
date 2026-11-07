@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/washora_logo.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'login_screen.dart';
 
@@ -124,11 +125,7 @@ class RoleSelectionScreen extends StatelessWidget {
             ],
           ),
           child: Center(
-            child: Icon(
-              Icons.local_laundry_service_rounded,
-              size: 56,
-              color: primaryColor,
-            ),
+            child: const WashoraLogo(size: 60),
           ),
         ),
         const SizedBox(height: 16),

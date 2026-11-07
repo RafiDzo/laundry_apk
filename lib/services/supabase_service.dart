@@ -3,6 +3,7 @@ import '../models/user_model.dart';
 import '../models/shop_model.dart';
 import '../models/order_model.dart';
 import '../models/notification_model.dart';
+import '../models/review_model.dart';
 
 class SupabaseService {
   final SupabaseClient _db = Supabase.instance.client;
@@ -148,6 +149,79 @@ class SupabaseService {
         .select()
         .single();
     return ShopModel.fromMap(data, data['id']);
+  }
+
+  /// Simpan perubahan pengaturan outlet milik owner (nama, alamat, jam buka,
+  /// tarif & layanan, lokasi peta). Mengembalikan data outlet terbaru.
+  Future<ShopModel> updateMyShop(String shopId, Map<String, dynamic> updates) async {
+    final data = await _db
+        .from('shops')
+        .update(updates)
+        .eq('id', shopId)
+        .select()
+        .maybeSingle();
+    if (data == null) {
+      throw Exception('Perubahan ditolak. Pastikan akun ini pemilik outlet dan migrasi database sudah dijalankan.');
+    }
+    return ShopModel.fromMap(data, data['id']);
+  }
+
+  // ================= REVIEWS =================
+
+  /// Ulasan terbaru untuk satu outlet
+  Future<List<ReviewModel>> getShopReviews(String shopId, {int limit = 30}) async {
+    try {
+      final data = await _db
+          .from('reviews')
+          .select()
+          .eq('shop_id', shopId)
+          .order('created_at', ascending: false)
+          .limit(limit);
+      return data.map<ReviewModel>(ReviewModel.fromMap).toList();
+    } catch (e) {
+      print('Error getShopReviews: $e');
+      return [];
+    }
+  }
+
+  /// Ulasan yang sudah ditulis user, dikelompokkan per order_id
+  Future<Map<String, ReviewModel>> getMyReviewsByOrder(String userId) async {
+    try {
+      final data = await _db.from('reviews').select().eq('user_id', userId);
+      return {
+        for (final row in data) row['order_id'].toString(): ReviewModel.fromMap(row),
+      };
+    } catch (e) {
+      print('Error getMyReviewsByOrder: $e');
+      return {};
+    }
+  }
+
+  /// Kirim (atau perbarui) ulasan untuk pesanan yang sudah selesai
+  Future<void> submitReview({
+    required String orderId,
+    required String shopId,
+    required int rating,
+    required String comment,
+    required List<String> tags,
+    required String serviceSummary,
+  }) async {
+    final user = _db.auth.currentUser;
+    if (user == null) throw Exception('Sesi login berakhir. Silakan login ulang.');
+    final profile = await getUserProfile(user.id);
+    final name = profile?.name.isNotEmpty == true
+        ? profile!.name
+        : (user.userMetadata?['name'] as String? ?? user.email?.split('@').first ?? 'Pelanggan');
+    await _db.from('reviews').upsert({
+      'order_id': orderId,
+      'shop_id': shopId,
+      'user_id': user.id,
+      'user_name': name,
+      'rating': rating,
+      'comment': comment,
+      'tags': tags,
+      'service_summary': serviceSummary,
+    }, onConflict: 'order_id');
   }
 
   // ================= ORDERS =================

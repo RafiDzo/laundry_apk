@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../widgets/quick_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +11,10 @@ class AddressItem {
   final String address;
   final String note;
   final bool isDefault;
+  final double? latitude;
+  final double? longitude;
+
+  bool get hasLocation => latitude != null && longitude != null;
 
   const AddressItem({
     required this.id,
@@ -17,6 +22,8 @@ class AddressItem {
     required this.address,
     this.note = '',
     this.isDefault = false,
+    this.latitude,
+    this.longitude,
   });
 
   IconData get icon {
@@ -39,6 +46,8 @@ class AddressItem {
     'address': address,
     'note': note,
     'isDefault': isDefault ? 'true' : 'false',
+    if (latitude != null) 'lat': latitude,
+    if (longitude != null) 'lng': longitude,
   };
 
   factory AddressItem.fromMap(Map<String, dynamic> map) => AddressItem(
@@ -47,6 +56,8 @@ class AddressItem {
     address: map['address']?.toString() ?? 'Jl. Merdeka No. 12, RT 02 / RW 05, Menteng',
     note: map['note']?.toString() ?? '',
     isDefault: map['isDefault'] == 'true' || map['isDefault'] == true,
+    latitude: (map['lat'] as num?)?.toDouble(),
+    longitude: (map['lng'] as num?)?.toDouble(),
   );
 
   AddressItem copyWith({
@@ -55,12 +66,16 @@ class AddressItem {
     String? address,
     String? note,
     bool? isDefault,
+    double? latitude,
+    double? longitude,
   }) => AddressItem(
     id: id ?? this.id,
     label: label ?? this.label,
     address: address ?? this.address,
     note: note ?? this.note,
     isDefault: isDefault ?? this.isDefault,
+    latitude: latitude ?? this.latitude,
+    longitude: longitude ?? this.longitude,
   );
 }
 
@@ -243,6 +258,8 @@ class AddressService {
     required String label,
     required String address,
     String note = '',
+    double? latitude,
+    double? longitude,
   }) async {
     final newItem = AddressItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -250,6 +267,8 @@ class AddressService {
       address: address,
       note: note,
       isDefault: true,
+      latitude: latitude,
+      longitude: longitude,
     );
     await addAddress(newItem, setAsDefault: true);
   }
@@ -457,7 +476,7 @@ class AddressService {
                                         selectAddress(item);
                                         onSelected?.call(item);
                                         Navigator.pop(ctx);
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(context).showQuickSnackBar(
                                           SnackBar(
                                             content: Row(
                                               children: [
@@ -1019,7 +1038,7 @@ class AddressService {
                                   final note = noteController.text.trim();
 
                                   if (address.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    ScaffoldMessenger.of(context).showQuickSnackBar(
                                       SnackBar(
                                         content: Text(
                                           'Alamat lengkap tidak boleh kosong',
@@ -1044,7 +1063,7 @@ class AddressService {
                                   );
 
                                   Navigator.pop(ctx);
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  ScaffoldMessenger.of(context).showQuickSnackBar(
                                     SnackBar(
                                       content: Text(
                                         'Alamat "$label" berhasil disimpan!',

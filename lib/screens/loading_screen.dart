@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../widgets/washora_logo.dart';
 import 'dart:ui';
 import 'package:google_fonts/google_fonts.dart';
 import 'role_selection_screen.dart';
+import 'forgot_password_screen.dart';
+import '../services/auth_service.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -52,10 +55,14 @@ class _LoadingScreenState extends State<LoadingScreen>
     // Navigate to next screen after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
+        PasswordRecovery.appReady = true;
+        final recovery = PasswordRecovery.pending;
+        PasswordRecovery.pending = false;
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                const RoleSelectionScreen(),
+            pageBuilder: (context, animation, secondaryAnimation) => recovery
+                ? const ForgotPasswordScreen(fromRecoveryLink: true)
+                : const RoleSelectionScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
                   return FadeTransition(opacity: animation, child: child);
@@ -246,10 +253,7 @@ class _LoadingScreenState extends State<LoadingScreen>
               alignment: Alignment.center,
               child: Transform.translate(
                 offset: const Offset(0, 4), // translate-y-1 = 4px down
-                child: CustomPaint(
-                  size: const Size(128, 128), // w-32 h-32
-                  painter: _LaundryIconPainter(color: primaryColor),
-                ),
+                child: const WashoraLogo(size: 120),
               ),
             ),
           ),
@@ -295,176 +299,4 @@ class _LoadingScreenState extends State<LoadingScreen>
       }),
     );
   }
-}
-
-class _LaundryIconPainter extends CustomPainter {
-  final Color color;
-
-  _LaundryIconPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    // SVG viewBox="0 0 100 100" -> scale by size.width / 100
-    final scale = size.width / 100;
-
-    // --- Main shirt/clothing shape ---
-    final shirtPath = Path();
-    shirtPath.moveTo(25 * scale, 32 * scale);
-    shirtPath.lineTo(35 * scale, 28 * scale);
-    shirtPath.lineTo(50 * scale, 33 * scale);
-    shirtPath.lineTo(65 * scale, 28 * scale);
-    shirtPath.lineTo(75 * scale, 32 * scale);
-    shirtPath.lineTo(70 * scale, 42 * scale);
-    shirtPath.lineTo(63 * scale, 38 * scale);
-    shirtPath.lineTo(65 * scale, 55 * scale);
-    shirtPath.cubicTo(
-      65 * scale,
-      55 * scale,
-      68 * scale,
-      62 * scale,
-      60 * scale,
-      62 * scale,
-    );
-    shirtPath.lineTo(40 * scale, 62 * scale);
-    shirtPath.cubicTo(
-      32 * scale,
-      62 * scale,
-      35 * scale,
-      55 * scale,
-      35 * scale,
-      55 * scale,
-    );
-    shirtPath.lineTo(37 * scale, 38 * scale);
-    shirtPath.lineTo(30 * scale, 42 * scale);
-    shirtPath.close();
-    canvas.drawPath(shirtPath, paint);
-
-    // --- Sparkle star at top right ---
-    final sparklePath = Path();
-    sparklePath.moveTo(58 * scale, 35 * scale);
-    sparklePath.lineTo(60 * scale, 31 * scale);
-    sparklePath.lineTo(62 * scale, 35 * scale);
-    sparklePath.lineTo(66 * scale, 37 * scale);
-    sparklePath.lineTo(62 * scale, 39 * scale);
-    sparklePath.lineTo(60 * scale, 43 * scale);
-    sparklePath.lineTo(58 * scale, 39 * scale);
-    sparklePath.lineTo(54 * scale, 37 * scale);
-    sparklePath.close();
-    canvas.drawPath(sparklePath, paint);
-
-    // --- Smile curve (bottom arc) ---
-    final smilePath = Path();
-    smilePath.moveTo(22 * scale, 65 * scale);
-    smilePath.cubicTo(
-      22 * scale,
-      65 * scale,
-      30 * scale,
-      78 * scale,
-      50 * scale,
-      78 * scale,
-    );
-    smilePath.cubicTo(
-      70 * scale,
-      78 * scale,
-      78 * scale,
-      65 * scale,
-      78 * scale,
-      65 * scale,
-    );
-    smilePath.lineTo(76 * scale, 68 * scale);
-    smilePath.cubicTo(
-      76 * scale,
-      68 * scale,
-      68 * scale,
-      82 * scale,
-      50 * scale,
-      82 * scale,
-    );
-    smilePath.cubicTo(
-      32 * scale,
-      82 * scale,
-      24 * scale,
-      68 * scale,
-      24 * scale,
-      68 * scale,
-    );
-    smilePath.close();
-    canvas.drawPath(smilePath, paint);
-
-    // --- Wave/swoosh line ---
-    final swooshPath = Path();
-    swooshPath.moveTo(30 * scale, 60 * scale);
-    swooshPath.cubicTo(
-      30 * scale,
-      60 * scale,
-      40 * scale,
-      70 * scale,
-      65 * scale,
-      65 * scale,
-    );
-    swooshPath.lineTo(63 * scale, 68 * scale);
-    swooshPath.cubicTo(
-      63 * scale,
-      68 * scale,
-      40 * scale,
-      75 * scale,
-      32 * scale,
-      63 * scale,
-    );
-    swooshPath.close();
-    canvas.drawPath(swooshPath, paint);
-
-    // --- Bubbles ---
-    canvas.drawCircle(Offset(25 * scale, 55 * scale), 3 * scale, paint);
-    canvas.drawCircle(Offset(28 * scale, 48 * scale), 2 * scale, paint);
-    canvas.drawCircle(Offset(75 * scale, 52 * scale), 4 * scale, paint);
-    canvas.drawCircle(Offset(72 * scale, 45 * scale), 2.5 * scale, paint);
-    canvas.drawCircle(Offset(35 * scale, 72 * scale), 2 * scale, paint);
-    canvas.drawCircle(Offset(65 * scale, 70 * scale), 1.5 * scale, paint);
-
-    // --- Small sparkle stars ---
-    _drawSparkle(canvas, paint, scale, 20, 55, 0.7);
-    _drawSparkle(canvas, paint, scale, 74, 40, 0.8);
-  }
-
-  void _drawSparkle(
-    Canvas canvas,
-    Paint paint,
-    double scale,
-    double cx,
-    double cy,
-    double sparkleScale,
-  ) {
-    final path = Path();
-    final s = sparkleScale;
-    path.moveTo(
-      (cx - 2) * scale * s + (1 - s) * cx * scale,
-      (cy - 1) * scale * s + (1 - s) * cy * scale,
-    );
-    path.lineTo(cx * scale, (cy - 3) * scale * s + (1 - s) * cy * scale);
-    path.lineTo(
-      (cx + 2) * scale * s + (1 - s) * cx * scale,
-      (cy - 1) * scale * s + (1 - s) * cy * scale,
-    );
-    path.lineTo((cx + 3) * scale * s + (1 - s) * cx * scale, cy * scale);
-    path.lineTo(
-      (cx + 2) * scale * s + (1 - s) * cx * scale,
-      (cy + 1) * scale * s + (1 - s) * cy * scale,
-    );
-    path.lineTo(cx * scale, (cy + 3) * scale * s + (1 - s) * cy * scale);
-    path.lineTo(
-      (cx - 2) * scale * s + (1 - s) * cx * scale,
-      (cy + 1) * scale * s + (1 - s) * cy * scale,
-    );
-    path.lineTo((cx - 3) * scale * s + (1 - s) * cx * scale, cy * scale);
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
