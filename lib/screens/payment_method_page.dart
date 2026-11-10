@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/washora_logo.dart';
 import '../widgets/quick_snackbar.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -69,10 +70,42 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
   int get _payable =>
       (widget.totalAmount - _discount - _memberDelivery - _pointsUsed).clamp(0, widget.totalAmount);
 
+  // ── Nomor WhatsApp pelanggan (agar mitra bisa menghubungi bila mendesak) ──
+  final _waCtrl = TextEditingController();
+  String? _waError;
+  static const _kFakeDefaultPhone = '0812-3456-7890';
+
   @override
   void initState() {
     super.initState();
     _loadBenefitsThenPromos();
+    _loadSavedPhone();
+  }
+
+  @override
+  void dispose() {
+    _waCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSavedPhone() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('pref_phone') ?? '';
+      if (mounted && saved.isNotEmpty && saved != _kFakeDefaultPhone && _waCtrl.text.isEmpty) {
+        _waCtrl.text = saved;
+      }
+    } catch (_) {}
+  }
+
+  /// null = valid; selain itu pesan error
+  static String? validateWhatsApp(String input) {
+    final digits = input.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return 'Nomor WhatsApp wajib diisi agar outlet bisa menghubungi Anda.';
+    final local = digits.startsWith('62') ? '0${digits.substring(2)}' : digits;
+    if (!local.startsWith('08')) return 'Gunakan nomor HP Indonesia, diawali 08 atau +62.';
+    if (local.length < 10 || local.length > 13) return 'Panjang nomor HP tidak sesuai (10–13 digit).';
+    return null;
   }
 
   Future<void> _loadBenefitsThenPromos({String? keepId}) async {
@@ -218,9 +251,21 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
         throw 'Outlet tidak valid. Silakan pilih outlet dari Beranda.';
       }
 
+      final phone = _waCtrl.text.trim();
+      final waErr = validateWhatsApp(phone);
+      if (waErr != null) {
+        setState(() => _waError = waErr);
+        throw waErr;
+      }
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('pref_phone', phone);
+      } catch (_) {}
+
       final order = OrderModel(
         id: '',
         userId: user.id,
+        customerPhone: phone,
         shopId: shopId,
         shopName: widget.laundry['name'] ?? 'CleanPro Kemang',
         items: widget.items,
@@ -243,6 +288,9 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
         orderId = await SupabaseService().createOrder(order);
       } catch (e) {
         final msg = e.toString();
+        if (msg.contains('tidak menerima pesanan')) {
+          throw 'Outlet ini sedang tidak menerima pesanan aplikasi. Coba outlet lain.';
+        }
         // Benefit member ditolak server (kuota habis, poin kurang, langganan berakhir)
         final memberReason = RegExp(r'(Kuota gratis ongkir[^,)]*|Gratis ongkir member[^,)]*|Poin [^,)]*)').firstMatch(msg)?.group(0);
         if (memberReason != null) {
@@ -344,6 +392,8 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
                                 applied: _applied,
                                 onChanged: (q) => setState(() => _applied = q),
                               ),
+                              const SizedBox(height: 14),
+                              _buildWhatsAppCard(),
                               const SizedBox(height: 14),
                               _buildOrderSummaryCard(),
                               const SizedBox(height: 18),
@@ -493,6 +543,50 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
               value: _usePoints,
               onChanged: (v) => setState(() => _usePoints = v),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWhatsAppCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _waError != null ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.chat_rounded, size: 18, color: Color(0xFF16A34A)),
+              const SizedBox(width: 8),
+              Text('Nomor WhatsApp',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A))),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('Dipakai outlet untuk menghubungi Anda bila ada hal mendesak tentang cucian.',
+              style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _waCtrl,
+            keyboardType: TextInputType.phone,
+            autofillHints: const [AutofillHints.telephoneNumber],
+            onChanged: (_) {
+              if (_waError != null) setState(() => _waError = null);
+            },
+            decoration: InputDecoration(
+              hintText: '08xx-xxxx-xxxx',
+              prefixIcon: const Icon(Icons.phone_rounded),
+              errorText: _waError,
+              errorMaxLines: 2,
+              isDense: true,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
         ],
       ),
     );
@@ -978,4 +1072,9 @@ class _PaymentMethod {
     this.icon,
     this.badge,
   });
+}
+
+/// Akses validasi nomor WA untuk unit test
+class PaymentMethodPageStateTest {
+  static String? validate(String input) => _PaymentMethodPageState.validateWhatsApp(input);
 }

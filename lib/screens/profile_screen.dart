@@ -38,7 +38,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _danaNumber = '0812-3456-7890';
   String _gopayNumber = '0812-3456-7890';
   String _ovoNumber = '';
-  final int _tokenBalance = 957;
 
   List<Map<String, String>> _addresses = [
     {
@@ -607,7 +606,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ═══════════════════════════════════════════════
   Widget _buildMembershipTierCard() {
     // Tingkat, masa berlaku & jumlah pesanan diambil dari database (bukan angka contoh)
-    return MembershipCard(tokenBalance: _tokenBalance);
+    return const MembershipCard();
   }
 
   // ═══════════════════════════════════════════════

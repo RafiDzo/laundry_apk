@@ -167,6 +167,43 @@ class ChatService {
     }
   }
 
+  // ===================== HAPUS PESAN / CHAT =====================
+
+  /// [forEveryone] = tarik pesan (pengirim, ≤ 24 jam); selain itu sembunyikan untuk diri sendiri.
+  Future<void> deleteMessage(ChatMessage m, {required bool forEveryone}) async {
+    try {
+      // Foto yang ditarik ikut dihapus dari penyimpanan
+      if (forEveryone && m.type == 'image' && m.imagePath != null && m.imagePath!.contains('/')) {
+        try {
+          await _db.storage.from(bucket).remove([m.imagePath!]);
+        } catch (_) {}
+        _urlCache.remove(m.imagePath);
+      }
+      await _db.rpc('chat_delete_message', params: {'p_message_id': m.id, 'p_for_everyone': forEveryone});
+    } catch (e) {
+      throw _wrap(e, 'Pesan gagal dihapus');
+    }
+  }
+
+  /// Hapus percakapan dari kotak masuk (hanya untuk akun sendiri)
+  Future<void> clearConversation(String conversationId) async {
+    try {
+      await _db.rpc('chat_clear_conversation', params: {'p_conversation_id': conversationId});
+    } catch (e) {
+      throw _wrap(e, 'Percakapan gagal dihapus');
+    }
+  }
+
+  /// Hapus semua percakapan yang tidak aktif lebih dari [days] hari. Mengembalikan jumlahnya.
+  Future<int> clearOldConversations(int days) async {
+    try {
+      final n = await _db.rpc('chat_clear_old', params: {'p_days': days});
+      return n is num ? n.toInt() : 0;
+    } catch (e) {
+      throw _wrap(e, 'Percakapan lama gagal dibersihkan');
+    }
+  }
+
   // ========================= PESAN =========================
 
   /// Satu halaman pesan, TERBARU lebih dulu. [before] = cursor (created_at pesan tertua yang sudah ada).

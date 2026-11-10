@@ -6,6 +6,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../models/membership_models.dart';
 import '../services/membership_service.dart';
+import '../services/wallet_service.dart';
+import '../payments/qris.dart';
+import '../payments/qris_pay_card.dart';
 import '../utils/format_id.dart';
 import '../widgets/quick_snackbar.dart';
 
@@ -334,6 +337,7 @@ class _CheckoutScreenState extends State<_CheckoutScreen> {
   final _service = MembershipService();
   PaymentInfo? _info;
   String? _infoError;
+  String _platformQris = ''; // QRIS statis Washora → QR dengan nominal paket
   String _method = 'transfer';
   Uint8List? _proof;
   String _mime = 'image/jpeg';
@@ -343,6 +347,9 @@ class _CheckoutScreenState extends State<_CheckoutScreen> {
   @override
   void initState() {
     super.initState();
+    WalletService().platformQris().then((q) {
+      if (mounted) setState(() => _platformQris = q);
+    });
     _service.fetchPaymentInfo().then((i) {
       if (!mounted) return;
       setState(() {
@@ -354,7 +361,9 @@ class _CheckoutScreenState extends State<_CheckoutScreen> {
     });
   }
 
-  bool get _methodAvailable => _info != null && (_method == 'transfer' ? _info!.hasTransfer : _info!.hasQris);
+  bool get _hasDynamicQris => _platformQris.isNotEmpty && Qris.isValid(_platformQris);
+  bool get _methodAvailable =>
+      _info != null && (_method == 'transfer' ? _info!.hasTransfer : (_hasDynamicQris || _info!.hasQris));
 
   Future<void> _pickProof(ImageSource source) async {
     try {
@@ -496,7 +505,9 @@ class _CheckoutScreenState extends State<_CheckoutScreen> {
                             if (info.note.isNotEmpty) ...[const SizedBox(height: 6), Text(info.note, style: _t(11.5, c: _muted))],
                           ],
                         )
-                      : Column(
+                      : _hasDynamicQris
+                          ? QrisPayCard(payload: _platformQris, amount: amount, title: 'Langganan ${p.name}')
+                          : Column(
                           children: [
                             Text('Pindai QRIS lalu bayar tepat ${rupiah(amount)}', style: _t(12.5, c: _muted)),
                             const SizedBox(height: 10),

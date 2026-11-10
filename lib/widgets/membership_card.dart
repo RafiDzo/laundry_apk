@@ -12,8 +12,7 @@ import '../utils/format_id.dart';
 /// Kartu status member di Profil: tingkat asli dari database, masa berlaku,
 /// jumlah pesanan asli. Mengetuk kartu membuka halaman Langganan.
 class MembershipCard extends StatefulWidget {
-  final int tokenBalance;
-  const MembershipCard({super.key, required this.tokenBalance});
+  const MembershipCard({super.key});
 
   @override
   State<MembershipCard> createState() => _MembershipCardState();
@@ -109,8 +108,6 @@ class _MembershipCardState extends State<MembershipCard> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _stat('${widget.tokenBalance}', 'Token Saldo'),
-                  Container(width: 1, height: 26, color: Colors.white24),
                   _stat(
                     _orders == null ? '–' : '$_orders',
                     'Total Order',

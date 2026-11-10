@@ -14,6 +14,8 @@ class ChatConversation {
   final int ownerUnread;
   final String? blockedBy;
   final DateTime createdAt;
+  final DateTime? customerClearedAt;
+  final DateTime? ownerClearedAt;
 
   const ChatConversation({
     required this.id,
@@ -30,6 +32,8 @@ class ChatConversation {
     required this.ownerUnread,
     required this.blockedBy,
     required this.createdAt,
+    this.customerClearedAt,
+    this.ownerClearedAt,
   });
 
   factory ChatConversation.fromMap(Map<String, dynamic> m) => ChatConversation(
@@ -47,7 +51,20 @@ class ChatConversation {
         ownerUnread: (m['owner_unread'] as num?)?.toInt() ?? 0,
         blockedBy: m['blocked_by'] as String?,
         createdAt: m['created_at'] == null ? DateTime.now() : DateTime.parse(m['created_at']).toLocal(),
+        customerClearedAt: m['customer_cleared_at'] == null ? null : DateTime.parse(m['customer_cleared_at']).toLocal(),
+        ownerClearedAt: m['owner_cleared_at'] == null ? null : DateTime.parse(m['owner_cleared_at']).toLocal(),
       );
+
+  /// Batas "hapus percakapan" milik [uid]; pesan sebelum ini tidak tampil untuknya
+  DateTime? clearedAtFor(String uid) => uid == ownerId ? ownerClearedAt : customerClearedAt;
+
+  /// Tampil di kotak masuk: ada pesan yang lebih baru dari batas hapus milik [uid]
+  bool visibleFor(String uid) {
+    final last = lastMessageAt;
+    if (last == null) return uid != ownerId; // pelanggan tetap melihat chat yang ia buka
+    final cleared = clearedAtFor(uid);
+    return cleared == null || last.isAfter(cleared);
+  }
 
   bool isOwner(String uid) => uid == ownerId;
   int unreadFor(String uid) => uid == ownerId ? ownerUnread : customerUnread;
@@ -76,6 +93,7 @@ class ChatMessage {
   final DateTime createdAt;
   final DateTime? deliveredAt;
   final DateTime? readAt;
+  final DateTime? deletedAt; // ditarik pengirim ("hapus untuk semua")
 
   /// Hanya untuk pesan lokal (optimistic): sedang dikirim / gagal
   final bool pending;
@@ -95,6 +113,7 @@ class ChatMessage {
     this.clientId,
     this.deliveredAt,
     this.readAt,
+    this.deletedAt,
     this.pending = false,
     this.failed = false,
     this.localBytes,
@@ -111,9 +130,15 @@ class ChatMessage {
         createdAt: DateTime.parse(m['created_at']).toLocal(),
         deliveredAt: m['delivered_at'] == null ? null : DateTime.parse(m['delivered_at']).toLocal(),
         readAt: m['read_at'] == null ? null : DateTime.parse(m['read_at']).toLocal(),
+        deletedAt: m['deleted_at'] == null ? null : DateTime.parse(m['deleted_at']).toLocal(),
       );
 
-  bool get isImage => type == 'image';
+  bool get isImage => type == 'image' && deletedAt == null;
+  bool get isDeleted => deletedAt != null;
+
+  /// "Hapus untuk semua orang" hanya untuk pengirim, dalam 24 jam
+  bool canUnsend(String uid) =>
+      senderId == uid && !isDeleted && !pending && !failed && DateTime.now().difference(createdAt).inHours < 24;
 
   MessageState get state {
     if (failed) return MessageState.failed;
@@ -134,6 +159,7 @@ class ChatMessage {
         clientId: clientId,
         deliveredAt: deliveredAt,
         readAt: readAt,
+        deletedAt: deletedAt,
         pending: pending ?? this.pending,
         failed: failed ?? this.failed,
         localBytes: localBytes,

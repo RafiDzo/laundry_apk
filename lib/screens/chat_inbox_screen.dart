@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/chat_models.dart';
 import '../services/chat_service.dart';
 import '../widgets/chat_widgets.dart';
+import '../widgets/quick_snackbar.dart';
 import 'chat_room_screen.dart';
 
 /// Kotak masuk chat. Mitra melihat percakapan dengan pelanggan outletnya,
@@ -71,7 +72,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
   List<ChatConversation> _filtered(String me) {
     final q = _query.trim().toLowerCase().replaceAll('#', '');
     // Mitra hanya melihat percakapan yang sudah berisi pesan; pelanggan melihat semua yang ia buka
-    final items = (_items ?? const <ChatConversation>[]).where((c) => c.lastMessageAt != null || !c.isOwner(me));
+    final items = (_items ?? const <ChatConversation>[]).where((c) => c.visibleFor(me));
     if (q.isEmpty) return items.toList();
     return items
         .where((c) => c.partnerName(me).toLowerCase().contains(q) || c.orderCode.toLowerCase().contains(q))
@@ -91,6 +92,17 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
         surfaceTintColor: Colors.white,
         foregroundColor: CC.ink,
         elevation: 0,
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Opsi',
+            onSelected: (v) {
+              if (v == 'old') _clearOld();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'old', child: Text('Bersihkan percakapan lama')),
+            ],
+          ),
+        ],
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -155,7 +167,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
           ? const SizedBox.shrink()
           : const Center(child: CircularProgressIndicator(strokeWidth: 2.5, color: CC.brand));
     }
-    if (_items!.isEmpty || items.isEmpty && _query.isEmpty) {
+    if (items.isEmpty && _query.isEmpty) {
       return _empty(
         Icons.forum_outlined,
         'Belum ada percakapan',
@@ -171,8 +183,133 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
       padding: const EdgeInsets.only(top: 8, bottom: 24),
       itemCount: items.length,
       separatorBuilder: (_, _) => const Divider(height: 1, indent: 74, color: CC.border),
-      itemBuilder: (_, i) => _ConversationTile(conversation: items[i], me: me),
+      itemBuilder: (_, i) {
+        final c = items[i];
+        // Geser ke kiri untuk menghapus tanpa membuka ruang chat
+        return Dismissible(
+          key: ValueKey('conv-${c.id}'),
+          direction: DismissDirection.endToStart,
+          confirmDismiss: (_) => _confirmDelete(c, me),
+          background: Container(
+            color: CC.bad,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.delete_outline_rounded, color: Colors.white),
+                SizedBox(width: 6),
+                Text('Hapus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+          child: _ConversationTile(conversation: c, me: me, onLongPress: () => _tileMenu(c, me)),
+        );
+      },
     );
+  }
+
+  /// Konfirmasi lalu hapus percakapan (hanya untuk akun sendiri)
+  Future<bool> _confirmDelete(ChatConversation c, String me) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus percakapan?'),
+        content: Text('Chat dengan ${c.partnerName(me)} (pesanan #${c.orderCode}) hilang dari akun Anda. '
+            'Jika ada pesan baru, percakapan muncul lagi.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: CC.bad),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return false;
+    try {
+      await _service.clearConversation(c.id);
+      if (mounted) {
+        setState(() => _items = _items?.where((x) => x.id != c.id).toList());
+        ScaffoldMessenger.of(context).showQuickSnackBar(const SnackBar(content: Text('Percakapan dihapus.')));
+      }
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showQuickSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: CC.bad));
+      }
+      return false;
+    }
+  }
+
+  void _tileMenu(ChatConversation c, String me) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded, color: CC.bad),
+              title: const Text('Hapus percakapan', style: TextStyle(color: CC.bad)),
+              subtitle: Text('${c.partnerName(me)} · Pesanan #${c.orderCode}'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmDelete(c, me);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Bersihkan sekaligus percakapan yang lama tidak aktif
+  Future<void> _clearOld() async {
+    final days = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+              child: Text('Bersihkan percakapan lama', style: cText(16, color: CC.ink, weight: FontWeight.w800)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text('Hanya hilang dari akun Anda. Lawan bicara tetap menyimpan riwayatnya.',
+                  style: cText(12, color: CC.muted)),
+            ),
+            for (final d in const [7, 30, 90])
+              ListTile(
+                leading: const Icon(Icons.history_toggle_off_rounded),
+                title: Text('Tidak aktif lebih dari $d hari'),
+                onTap: () => Navigator.pop(ctx, d),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (days == null) return;
+    try {
+      final n = await _service.clearOldConversations(days);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showQuickSnackBar(SnackBar(
+        content: Text(n == 0 ? 'Tidak ada percakapan yang tidak aktif lebih dari $days hari.' : '$n percakapan lama dihapus.'),
+      ));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showQuickSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: CC.bad));
+      }
+    }
   }
 
   Widget _empty(IconData icon, String title, String message) {
@@ -194,7 +331,8 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
 class _ConversationTile extends StatelessWidget {
   final ChatConversation conversation;
   final String me;
-  const _ConversationTile({required this.conversation, required this.me});
+  final VoidCallback onLongPress;
+  const _ConversationTile({required this.conversation, required this.me, required this.onLongPress});
 
   @override
   Widget build(BuildContext context) {
@@ -205,6 +343,7 @@ class _ConversationTile extends StatelessWidget {
     return Material(
       color: Colors.white,
       child: InkWell(
+        onLongPress: onLongPress,
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => ChatRoomScreen(conversation: c)),

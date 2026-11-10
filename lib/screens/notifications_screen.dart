@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/supabase_service.dart';
 import 'order_history_screen.dart';
 import 'chat_room_screen.dart';
+import 'membership_screen.dart';
 
 const _blue = Color(0xFF0077E6);
 const _blueLight = Color(0xFFEFF6FF);
@@ -31,6 +32,18 @@ const _border = Color(0xFFE2E8F0);
     case 'cancelled':
       return (Icons.cancel_rounded, const Color(0xFFDC2626));
     // Notifikasi klaim kerusakan (status = 'claim_<status klaim>')
+    case 'wallet_topup_ok':
+      return (Icons.account_balance_wallet_rounded, const Color(0xFF15803D));
+    case 'wallet_topup_rejected':
+      return (Icons.error_outline_rounded, const Color(0xFFDC2626));
+    case 'claim_resolved':
+      return (Icons.task_alt_rounded, const Color(0xFF0F766E));
+    case 'points_earned':
+      return (Icons.savings_rounded, const Color(0xFFB7791F));
+    case 'membership_active':
+      return (Icons.workspace_premium_rounded, const Color(0xFFB7791F));
+    case 'membership_rejected':
+      return (Icons.error_outline_rounded, const Color(0xFFDC2626));
     case 'review_reply':
       return (Icons.reviews_rounded, const Color(0xFFD97706));
     case 'chat':
@@ -84,6 +97,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (!notif.isRead) _supabaseService.markNotificationRead(notif.id);
 
     final messenger = ScaffoldMessenger.of(context);
+    // Notifikasi langganan tidak terkait pesanan: buka halaman Langganan
+    if ((notif.status ?? '').startsWith('membership_')) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const MembershipScreen()));
+      return;
+    }
     if (notif.orderId == null) {
       messenger.showQuickSnackBar(
         SnackBar(

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../supabase_config.dart';
+import 'notification_service.dart';
 import 'supabase_service.dart';
 
 /// Dilempar oleh [AuthService.signIn] saat akun belum mengonfirmasi email,
@@ -128,6 +129,11 @@ class AuthService {
               : 'Pengguna Biasa';
           throw 'Akun ini terdaftar sebagai $roleText.\nTidak bisa masuk sebagai $expectedText.';
         }
+
+        // Daftarkan FCM token perangkat sesuai role (Customer / Mitra)
+        try {
+          await NotificationService().registerUserToken(profile?.role ?? expectedRole);
+        } catch (_) {}
       }
     } on AuthException catch (e) {
       debugPrint('signIn AuthException: ${e.statusCode} ${e.message}');
@@ -281,6 +287,9 @@ class AuthService {
   // ================= SIGN OUT =================
 
   Future<void> signOut() async {
+    try {
+      await NotificationService().unregisterUserToken();
+    } catch (_) {}
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn();
       await googleSignIn.signOut();

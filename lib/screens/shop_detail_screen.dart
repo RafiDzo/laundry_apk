@@ -10,6 +10,7 @@ import '../widgets/quick_snackbar.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'order_detail_screen.dart';
+import '../services/wallet_service.dart';
 import '../services/promo_service.dart';
 import '../models/shop_promo_model.dart';
 import 'chat_room_screen.dart';
@@ -195,7 +196,13 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
     );
     _loadReviews();
     _loadPromos();
+    WalletService().shopAcceptingOrders(_shopId).then((ok) {
+      if (mounted && !ok) setState(() => _acceptingOrders = false);
+    });
   }
+
+  /// false jika saldo komisi outlet melewati batas kredit
+  bool _acceptingOrders = true;
 
   /// Promo aktif yang dibuat mitra untuk outlet ini (tabel shop_promos)
   List<ShopPromoModel> _promos = [];
@@ -391,6 +398,10 @@ class _ShopDetailScreenState extends State<ShopDetailScreen>
   }
 
   void _navigateToOrderDetail() {
+    if (!_acceptingOrders) {
+      _showToast('Outlet ini sedang tidak menerima pesanan aplikasi. Coba outlet lain.');
+      return;
+    }
     if (widget.laundry['isOpen'] == false) {
       _showToast('Outlet sedang tutup sementara. Coba lagi nanti atau pilih outlet lain.');
       return;

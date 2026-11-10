@@ -115,7 +115,7 @@ class _ChatInboxButtonState extends State<ChatInboxButton> {
     _sub = ChatService.instance.watchConversations(asOwner: widget.asOwner).listen(
       (list) {
         final me = ChatService.instance.uid ?? '';
-        final total = list.fold<int>(0, (s, c) => s + c.unreadFor(me));
+        final total = list.where((c) => c.visibleFor(me)).fold<int>(0, (s, c) => s + c.unreadFor(me));
         if (total > 0) ChatService.instance.markDelivered(); // pesan sudah sampai di perangkat
         if (!_first && total > _unread && list.isNotEmpty) widget.onNewMessage?.call(list.first);
         _first = false;

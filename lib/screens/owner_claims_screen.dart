@@ -7,6 +7,8 @@ import '../models/order_model.dart';
 import '../services/evidence_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/evidence_widgets.dart';
+import '../widgets/claim_widgets.dart';
+import 'chat_room_screen.dart';
 
 const _primary = Color(0xFF0077B6);
 const _textDark = Color(0xFF0F172A);
@@ -21,6 +23,8 @@ Color claimStatusColor(String status) {
     case 'approved':
     case 'appeal_approved':
       return const Color(0xFF16A34A);
+    case 'resolved':
+      return const Color(0xFF0F766E);
     case 'rejected':
     case 'appeal_rejected':
       return const Color(0xFFDC2626);
@@ -64,12 +68,26 @@ class OwnerClaimsScreen extends StatelessWidget {
               }
               if (!snap.hasData) return const Center(child: CircularProgressIndicator());
               final claims = snap.data!;
-              if (claims.isEmpty) return _empty('Belum ada klaim kerusakan. 🎉');
-              return ListView.separated(
+              if (claims.isEmpty) {
+                return _empty('Belum ada klaim kerusakan. Klaim dari pelanggan akan muncul di sini, '
+                    'lengkap dengan foto pembanding saat cucian diterima.');
+              }
+              // Urutan kerja: yang lewat batas & menunggu di atas
+              final sorted = [...claims]..sort((a, b) {
+                  int rank(DamageClaim c) => c.isOverdue ? 0 : (c.isPending ? 1 : (c.awaitingSettlement ? 2 : 3));
+                  final r = rank(a).compareTo(rank(b));
+                  return r != 0 ? r : b.createdAt.compareTo(a.createdAt);
+                });
+              return ListView(
                 padding: const EdgeInsets.all(16),
-                itemCount: claims.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (_, i) => _ClaimCard(claim: claims[i]),
+                children: [
+                  _ClaimStatsCard(shopId: shopId, claims: claims),
+                  const SizedBox(height: 14),
+                  for (final c in sorted) ...[
+                    _ClaimCard(claim: c),
+                    const SizedBox(height: 12),
+                  ],
+                ],
               );
             },
           ),
@@ -84,6 +102,72 @@ class OwnerClaimsScreen extends StatelessWidget {
           child: Text(text, textAlign: TextAlign.center, style: GoogleFonts.inter(color: _textLight)),
         ),
       );
+}
+
+/// Statistik klaim: menunggu, lewat batas, rata-rata waktu respons, tingkat klaim
+class _ClaimStatsCard extends StatelessWidget {
+  final String shopId;
+  final List<DamageClaim> claims;
+  const _ClaimStatsCard({required this.shopId, required this.claims});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<ClaimStats?>(
+      future: EvidenceService().claimStats(shopId),
+      builder: (context, snap) {
+        final st = snap.data;
+        final pending = claims.where((c) => c.isPending).length;
+        final overdue = claims.where((c) => c.isOverdue).length;
+        final settle = claims.where((c) => c.awaitingSettlement).length;
+        Widget tile(String value, String label, Color color) => Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: color.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(value, style: GoogleFonts.quicksand(fontSize: 20, fontWeight: FontWeight.w800, color: _textDark)),
+                    Text(label, style: GoogleFonts.inter(fontSize: 11, color: _textMid, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            );
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: _border)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  tile('$pending', 'Menunggu', const Color(0xFFD97706)),
+                  const SizedBox(width: 8),
+                  tile('$overdue', 'Lewat 2x24 jam', const Color(0xFFDC2626)),
+                  const SizedBox(width: 8),
+                  tile('$settle', 'Perlu dituntaskan', const Color(0xFF0077B6)),
+                ],
+              ),
+              if (st != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  [
+                    if (st.avgResponseHours != null) 'Rata-rata respons ${st.avgResponseHours!.toStringAsFixed(1).replaceAll('.', ',')} jam',
+                    if (st.approvedRate != null) '${st.approvedRate}% klaim diberi penyelesaian',
+                    if (st.claimRatePct != null) '${st.claimRatePct!.toStringAsFixed(1).replaceAll('.', ',')} klaim per 100 pesanan selesai',
+                  ].join(' · '),
+                  style: GoogleFonts.inter(fontSize: 11.5, color: _textLight),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _ClaimCard extends StatelessWidget {
@@ -127,14 +211,38 @@ class _ClaimCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            if (claim.categoryLabel != null) ...[
+              const SizedBox(height: 6),
+              Text(claim.categoryLabel!, style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700, color: _textDark)),
+            ],
+            const SizedBox(height: 6),
             Text(claim.description,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(fontSize: 13, color: _textMid)),
-            const SizedBox(height: 6),
-            Text('Diajukan ${_formatDate(claim.createdAt)}',
-                style: GoogleFonts.inter(fontSize: 11, color: _textLight)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Diajukan ${_formatDate(claim.createdAt)}',
+                      style: GoogleFonts.inter(fontSize: 11, color: _textLight)),
+                ),
+                if (claim.isPending)
+                  Text(
+                    claim.isOverdue
+                        ? 'Lewat batas respons'
+                        : 'Sisa ${claimTimeLeft(claim.responseDeadline.difference(DateTime.now()))}',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: claim.isOverdue ? const Color(0xFFDC2626) : const Color(0xFFD97706),
+                    ),
+                  )
+                else if (claim.awaitingSettlement)
+                  Text('Perlu dituntaskan',
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF0077B6))),
+              ],
+            ),
           ],
         ),
       ),
@@ -182,8 +290,11 @@ class _OwnerClaimDetailScreenState extends State<OwnerClaimDetailScreen> {
   List<OrderPhoto> _stage(String s) => _photos.where((p) => p.stage == s).toList();
 
   Future<void> _showDecision({required bool approve}) async {
-    String resolution = 'rewash';
-    final amountCtrl = TextEditingController();
+    // Isi awal dari permintaan pelanggan
+    String resolution = _claim.requestedResolution ?? 'rewash';
+    final amountCtrl = TextEditingController(text: _claim.requestedAmount?.toString() ?? '');
+    final cap = await _evidence.compensationCap(_claim.orderId, _claim.affectedItems);
+    if (!mounted) return;
     final noteCtrl = TextEditingController();
     bool busy = false;
     String? error;
@@ -227,18 +338,28 @@ class _OwnerClaimDetailScreenState extends State<OwnerClaimDetailScreen> {
                           value: 'compensation',
                           contentPadding: EdgeInsets.zero,
                           title: Text('Ganti rugi uang', style: GoogleFonts.inter(fontSize: 14)),
+                          subtitle: Text('Tandai selesai setelah uang ditransfer', style: GoogleFonts.inter(fontSize: 11.5, color: _textLight)),
+                        ),
+                        RadioListTile<String>(
+                          value: 'points',
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('Kredit poin Washora', style: GoogleFonts.inter(fontSize: 14)),
+                          subtitle: Text('Langsung masuk saldo pelanggan, klaim otomatis selesai', style: GoogleFonts.inter(fontSize: 11.5, color: _textLight)),
                         ),
                       ],
                     ),
                   ),
-                  if (resolution == 'compensation')
+                  if (resolution == 'compensation' || resolution == 'points')
                     TextField(
                       controller: amountCtrl,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
-                        labelText: 'Nominal Ganti Rugi',
-                        prefixText: 'Rp ',
+                        labelText: resolution == 'points' ? 'Jumlah poin (1 poin = Rp 1)' : 'Nominal Ganti Rugi',
+                        prefixText: resolution == 'points' ? null : 'Rp ',
+                        helperText: resolution == 'compensation' && cap != null
+                            ? 'Maksimal Rp ${cap.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')} (10x harga layanan item terdampak)'
+                            : null,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
@@ -272,8 +393,12 @@ class _OwnerClaimDetailScreenState extends State<OwnerClaimDetailScreen> {
                         ? null
                         : () async {
                             final amount = int.tryParse(amountCtrl.text) ?? 0;
-                            if (approve && resolution == 'compensation' && amount <= 0) {
-                              setSheet(() => error = 'Isi nominal ganti rugi.');
+                            if (approve && (resolution == 'compensation' || resolution == 'points') && amount <= 0) {
+                              setSheet(() => error = resolution == 'points' ? 'Isi jumlah poin.' : 'Isi nominal ganti rugi.');
+                              return;
+                            }
+                            if (approve && resolution == 'compensation' && cap != null && amount > cap) {
+                              setSheet(() => error = 'Melebihi batas ganti rugi (10x harga layanan item terdampak).');
                               return;
                             }
                             if (!approve && noteCtrl.text.trim().length < 5) {
@@ -289,7 +414,7 @@ class _OwnerClaimDetailScreenState extends State<OwnerClaimDetailScreen> {
                                 claimId: _claim.id,
                                 approve: approve,
                                 resolution: approve ? resolution : null,
-                                amount: approve && resolution == 'compensation' ? amount : null,
+                                amount: approve && (resolution == 'compensation' || resolution == 'points') ? amount : null,
                                 note: noteCtrl.text,
                               );
                               if (res == 'OK') {
@@ -332,6 +457,39 @@ class _OwnerClaimDetailScreenState extends State<OwnerClaimDetailScreen> {
     }
   }
 
+  Future<void> _resolve() async {
+    final noteCtrl = TextEditingController(
+        text: _claim.resolution == 'rewash' ? 'Cuci ulang sudah selesai dan diserahkan.' : 'Ganti rugi sudah ditransfer.');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tandai klaim selesai?'),
+        content: TextField(
+          controller: noteCtrl,
+          maxLines: 3,
+          decoration: const InputDecoration(labelText: 'Catatan untuk pelanggan'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Selesai')),
+        ],
+      ),
+    );
+    final note = noteCtrl.text;
+    noteCtrl.dispose();
+    if (ok != true) return;
+    try {
+      final res = await _evidence.resolveClaim(_claim.id, note);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showQuickSnackBar(SnackBar(
+        content: Text(res == 'OK' ? 'Klaim ditandai selesai. Pelanggan sudah diberi tahu.' : 'Klaim belum bisa ditandai selesai ($res).'),
+      ));
+      _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showQuickSnackBar(SnackBar(content: Text(evidenceErrorMessage(e))));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = claimStatusColor(_claim.status);
@@ -364,13 +522,32 @@ class _OwnerClaimDetailScreenState extends State<OwnerClaimDetailScreen> {
                             style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
                       ),
                       children: [
+                        ClaimSummary(claim: _claim),
+                        const SizedBox(height: 6),
                         Text(_claim.description, style: GoogleFonts.inter(fontSize: 14, color: _textDark, height: 1.5)),
                         const SizedBox(height: 6),
                         Text('Diajukan ${_formatDate(_claim.createdAt)}',
                             style: GoogleFonts.inter(fontSize: 11, color: _textLight)),
-                        const SizedBox(height: 12),
-                        PhotoGallery(photos: _stage('claim'), size: 96),
+                        if (_order != null && _order!.userId.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            onPressed: () => openChatForOrder(context, _claim.orderId),
+                            icon: const Icon(Icons.forum_outlined, size: 18),
+                            label: const Text('Diskusikan dengan pelanggan'),
+                            style: OutlinedButton.styleFrom(minimumSize: const Size(44, 44)),
+                          ),
+                        ],
                       ],
+                    ),
+                    _section(
+                      title: 'Bandingkan Bukti',
+                      children: [
+                        BeforeAfterCompare(before: _stage('intake'), after: _stage('claim')),
+                      ],
+                    ),
+                    _section(
+                      title: 'Perjalanan Klaim',
+                      children: [ClaimTimeline(claim: _claim)],
                     ),
                     _section(
                       title: 'Foto Saat Diterima Outlet',
@@ -386,7 +563,7 @@ class _OwnerClaimDetailScreenState extends State<OwnerClaimDetailScreen> {
                         const SizedBox(height: 10),
                         PhotoGallery(
                           photos: _stage('intake'),
-                          size: 96,
+                          size: 72,
                           emptyText: 'Tidak ada foto penerimaan untuk pesanan ini.',
                         ),
                       ],
@@ -419,6 +596,19 @@ class _OwnerClaimDetailScreenState extends State<OwnerClaimDetailScreen> {
                           ],
                         ],
                       ),
+                    if (_claim.awaitingSettlement) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: FilledButton.icon(
+                          onPressed: _resolve,
+                          icon: const Icon(Icons.task_alt_rounded),
+                          label: Text(_claim.resolution == 'rewash' ? 'Cuci ulang selesai — tandai selesai' : 'Ganti rugi sudah dibayar — tandai selesai'),
+                          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0F766E)),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     if (_claim.isPending) ...[
                       const SizedBox(height: 8),
                       Row(

@@ -73,6 +73,15 @@ class SupabaseService {
   }
 
   /// Toko milik owner yang sedang login (null jika akun belum dihubungkan ke toko)
+  /// Seperti [getMyShop], tetapi melempar error (koneksi, sesi, izin) alih-alih
+  /// mengembalikan null — agar "gagal memuat" tidak dikira "belum punya outlet".
+  Future<ShopModel?> fetchMyShopStrict() async {
+    final uid = _db.auth.currentUser?.id;
+    if (uid == null) throw 'Sesi login belum siap. Coba lagi sebentar.';
+    final data = await _db.from('shops').select().eq('owner_id', uid).limit(1).maybeSingle();
+    return data == null ? null : ShopModel.fromMap(data, data['id']);
+  }
+
   Future<ShopModel?> getMyShop() async {
     final uid = _db.auth.currentUser?.id;
     if (uid == null) return null;

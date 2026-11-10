@@ -17,6 +17,7 @@ class ShopModel {
   final int reviewCount;
   final String phone;
   final String description;
+  final String qrisPayload; // teks QRIS statis outlet (untuk QRIS dinamis)
   final bool isOpen;
 
   bool get hasLocation => latitude != null && longitude != null;
@@ -46,6 +47,7 @@ class ShopModel {
     this.reviewCount = 0,
     this.phone = '',
     this.description = '',
+    this.qrisPayload = '',
     this.isDeliveryAvailable = true,
     this.deliveryFee = 5000,
     this.deliveryFeeType = 'flat',
@@ -131,6 +133,7 @@ class ShopModel {
       reviewCount: (data['review_count'] as num?)?.toInt() ?? 0,
       phone: data['phone'] ?? '',
       description: data['description'] ?? '',
+      qrisPayload: (data['qris_payload'] as String?) ?? '',
       isDeliveryAvailable: data['is_delivery_available'] ?? data['isDeliveryAvailable'] ?? true,
       deliveryFee: (data['delivery_fee'] ?? data['deliveryFee'] ?? 5000) as int,
       deliveryFeeType: data['delivery_fee_type'] ?? data['deliveryFeeType'] ?? 'flat',

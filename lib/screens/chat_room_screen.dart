@@ -544,6 +544,84 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
     }
   }
 
+  Future<void> _deleteMessage(ChatMessage m, {required bool forEveryone}) async {
+    if (m.failed) {
+      // Pesan gagal kirim hanya ada di perangkat
+      setState(() => _messages.removeWhere((x) => x.id == m.id));
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(forEveryone ? 'Hapus untuk semua orang?' : 'Hapus pesan untuk saya?'),
+        content: Text(forEveryone
+            ? 'Pesan dan fotonya dihapus. ${_conv.partnerName(_me)} akan melihat "Pesan ini telah dihapus".'
+            : 'Pesan hanya hilang dari chat Anda. ${_conv.partnerName(_me)} masih bisa melihatnya.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: CC.bad),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _service.deleteMessage(m, forEveryone: forEveryone);
+      if (!mounted) return;
+      setState(() {
+        if (forEveryone) {
+          final i = _messages.indexWhere((x) => x.id == m.id);
+          if (i >= 0) {
+            _messages[i] = ChatMessage(
+              id: m.id,
+              conversationId: m.conversationId,
+              senderId: m.senderId,
+              type: m.type,
+              body: '',
+              createdAt: m.createdAt,
+              deliveredAt: m.deliveredAt,
+              readAt: m.readAt,
+              deletedAt: DateTime.now(),
+            );
+          }
+        } else {
+          _messages.removeWhere((x) => x.id == m.id);
+        }
+      });
+    } catch (e) {
+      _snack(e.toString(), color: CC.bad);
+    }
+  }
+
+  Future<void> _clearConversation() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus percakapan?'),
+        content: Text('Semua pesan di chat pesanan #${_conv.orderCode} hilang dari akun Anda. '
+            'Jika ${_conv.partnerName(_me)} mengirim pesan baru, percakapan muncul lagi.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: CC.bad),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _service.clearConversation(_conv.id);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      _snack(e.toString(), color: CC.bad);
+    }
+  }
+
   void _messageActions(ChatMessage m) {
     final mine = m.senderId == _me;
     showModalBottomSheet(
@@ -555,7 +633,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
-            if (m.body.isNotEmpty)
+            if (m.body.isNotEmpty && !m.isDeleted)
               ListTile(
                 leading: const Icon(Icons.copy_rounded),
                 title: const Text('Salin teks'),
@@ -574,7 +652,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                   _retry(m);
                 },
               ),
-            if (!mine && !m.pending)
+            if (m.canUnsend(_me))
+              ListTile(
+                leading: const Icon(Icons.delete_forever_outlined, color: CC.bad),
+                title: const Text('Hapus untuk semua orang', style: TextStyle(color: CC.bad)),
+                subtitle: const Text('Bisa dalam 24 jam setelah dikirim'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deleteMessage(m, forEveryone: true);
+                },
+              ),
+            if (!m.pending)
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded),
+                title: const Text('Hapus untuk saya'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deleteMessage(m, forEveryone: false);
+                },
+              ),
+            if (!mine && !m.pending && !m.isDeleted)
               ListTile(
                 leading: const Icon(Icons.flag_outlined, color: CC.bad),
                 title: const Text('Laporkan pesan', style: TextStyle(color: CC.bad)),
@@ -583,7 +680,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
                   _report(message: m);
                 },
               ),
-            if (mine && m.state != MessageState.sending && m.state != MessageState.failed)
+            if (mine && !m.isDeleted && m.state != MessageState.sending && m.state != MessageState.failed)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                 child: Column(
@@ -647,8 +744,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> with WidgetsBindingObse
             onSelected: (v) {
               if (v == 'report') _report();
               if (v == 'block') _toggleBlock();
+              if (v == 'clear') _clearConversation();
             },
             itemBuilder: (_) => [
+              const PopupMenuItem(value: 'clear', child: Text('Hapus percakapan')),
               const PopupMenuItem(value: 'report', child: Text('Laporkan pengguna')),
               if (!_conv.isBlocked || blockedByMe)
                 PopupMenuItem(value: 'block', child: Text(_conv.isBlocked ? 'Buka blokir' : 'Blokir')),
@@ -1128,8 +1227,20 @@ class _Bubble extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (m.isDeleted)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.block_rounded, size: 15, color: mine ? Colors.white70 : CC.faint),
+                            const SizedBox(width: 6),
+                            Text(
+                              mine ? 'Anda menghapus pesan ini' : 'Pesan ini telah dihapus',
+                              style: cText(13, color: mine ? Colors.white70 : CC.muted).copyWith(fontStyle: FontStyle.italic),
+                            ),
+                          ],
+                        ),
                       if (m.isImage) _ChatImage(message: m),
-                      if (m.body.isNotEmpty)
+                      if (m.body.isNotEmpty && !m.isDeleted)
                         Padding(
                           padding: m.isImage ? const EdgeInsets.fromLTRB(6, 6, 6, 0) : EdgeInsets.zero,
                           child: Align(

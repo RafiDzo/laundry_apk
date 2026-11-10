@@ -1,3 +1,8 @@
+import 'claim_widgets.dart';
+import '../payments/qris.dart';
+import '../payments/qris_pay_card.dart';
+import '../services/supabase_service.dart';
+import '../screens/chat_room_screen.dart';
 import '../services/membership_service.dart';
 import 'package:flutter/material.dart';
 import 'quick_snackbar.dart';
@@ -41,6 +46,7 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
   String? _code;
   bool _busy = false;
   int _claimHours = 48; // mengikuti tingkat member saat cucian diterima
+  String _shopQris = ''; // QRIS statis outlet untuk bayar pesanan
 
   OrderModel get _order => widget.order;
 
@@ -58,6 +64,11 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
   }
 
   Future<void> _load() async {
+    if (_order.paymentMethod.toLowerCase() == 'qris' && _order.paidAt == null && _shopQris.isEmpty) {
+      SupabaseService().getShopById(_order.shopId).then((shop) {
+        if (mounted && shop != null) setState(() => _shopQris = shop.qrisPayload);
+      });
+    }
     MembershipService().claimHoursFor(_order).then((h) {
       if (mounted && h != _claimHours) setState(() => _claimHours = h);
     });
@@ -194,7 +205,9 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
   Widget build(BuildContext context) {
     if (_order.isCancelled) return const SizedBox.shrink();
 
+    final payQris = _order.paymentMethod.toLowerCase() == 'qris' && _order.paidAt == null;
     final cards = <Widget>[
+      if (payQris) _buildQrisPayment(),
       if (_order.status == 'done') _buildHandoverCard(),
       if (_order.status == 'delivered' && _order.receivedAt != null) _buildReceivedCard(),
       if (_claim != null) _buildClaimCard() else if (_order.canClaimWithin(_claimHours)) _buildReportCard(),
@@ -206,6 +219,34 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
       children: [
         for (final c in cards) ...[c, const SizedBox(height: 16)],
       ],
+    );
+  }
+
+  /// Bayar pesanan ke QRIS outlet dengan total terisi otomatis
+  Widget _buildQrisPayment() {
+    if (_shopQris.isEmpty || !Qris.isValid(_shopQris)) {
+      return _card(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.qr_code_2_rounded, color: _textMid),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Outlet belum mengaktifkan QRIS di aplikasi. Bayar ${_order.totalPrice > 0 ? 'Rp ${_order.totalPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}' : ''} '
+                'langsung di outlet atau tanyakan lewat chat.',
+                style: GoogleFonts.plusJakartaSans(fontSize: 12.5, color: _textMid),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return QrisPayCard(
+      payload: _shopQris,
+      amount: _order.totalPrice,
+      title: 'Bayar pesanan ke ${_order.shopName.isEmpty ? 'outlet' : _order.shopName}',
+      caption: 'Dana masuk langsung ke outlet. Status berubah menjadi Lunas setelah outlet mengecek dana masuk.',
     );
   }
 
@@ -359,10 +400,43 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
   }
 
   // ── Status klaim + banding ──
+  /// Outlet tidak merespons 2x24 jam: naikkan klaim ke tim Washora
+  Future<void> _escalate() async {
+    final claim = _claim;
+    if (claim == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Naikkan klaim ke Washora?'),
+        content: const Text('Outlet belum merespons dalam 2x24 jam. Tim Washora akan meninjau bukti dan memutuskan.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Naikkan')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final res = await _service.escalateClaim(claim.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showQuickSnackBar(SnackBar(
+        content: Text(switch (res) {
+          'OK' => 'Klaim dinaikkan. Tim Washora akan meninjau.',
+          'TOO_EARLY' => 'Outlet masih punya waktu merespons.',
+          'NOT_PENDING' => 'Outlet sudah merespons klaim ini.',
+          _ => 'Klaim tidak bisa dinaikkan.',
+        }),
+      ));
+      _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showQuickSnackBar(SnackBar(content: Text(evidenceErrorMessage(e))));
+    }
+  }
+
   Widget _buildClaimCard() {
     final claim = _claim!;
     final color = switch (claim.status) {
-      'approved' || 'appeal_approved' => _green,
+      'approved' || 'appeal_approved' || 'resolved' => _green,
       'rejected' || 'appeal_rejected' => _red,
       'appealed' => _purple,
       _ => _amber,
@@ -384,10 +458,13 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
             ),
           ),
           const SizedBox(height: 10),
+          ClaimSummary(claim: claim),
           Text(claim.description, style: GoogleFonts.plusJakartaSans(fontSize: 13, color: _textMid, height: 1.45)),
-          const SizedBox(height: 10),
-          PhotoGallery(photos: _stage('claim'), size: 64),
-          if (claim.isApproved) ...[
+          const SizedBox(height: 12),
+          BeforeAfterCompare(before: _stage('intake'), after: _stage('claim')),
+          const SizedBox(height: 14),
+          ClaimTimeline(claim: claim),
+          if (claim.isApproved || claim.isResolved) ...[
             const SizedBox(height: 12),
             Text('Resolusi: ${claim.resolutionLabel}',
                 style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: _green)),
@@ -400,6 +477,30 @@ class _OrderEvidenceSectionState extends State<OrderEvidenceSection> {
             const SizedBox(height: 6),
             Text('Keputusan Washora: ${claim.adminNote}', style: GoogleFonts.plusJakartaSans(fontSize: 12, color: _textMid)),
           ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => openChatForOrder(context, _order.id, fromOrderPage: true),
+                  icon: const Icon(Icons.forum_outlined, size: 18),
+                  label: Text('Chat outlet', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(44, 46)),
+                ),
+              ),
+              if (claim.canEscalate) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _escalate,
+                    icon: const Icon(Icons.support_agent_rounded, size: 18),
+                    label: Text('Naikkan ke Washora', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+                    style: FilledButton.styleFrom(backgroundColor: _purple, minimumSize: const Size(44, 46)),
+                  ),
+                ),
+              ],
+            ],
+          ),
           if (claim.canAppeal) ...[
             const SizedBox(height: 12),
             SizedBox(

@@ -3,8 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'supabase_config.dart';
+import 'utils/tap_guard.dart';
 import 'services/address_service.dart';
+import 'services/notification_service.dart';
+import 'services/push_router.dart';
 import 'screens/loading_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'services/auth_service.dart';
@@ -25,6 +29,17 @@ void main() async {
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
+
+  // Inisialisasi Firebase & Push Notification
+  try {
+    await Firebase.initializeApp();
+    PushRouter.attach(appNavigatorKey);
+    await NotificationService().initialize(onTapped: PushRouter.handle);
+    PushRouter.listenAuth();
+  } catch (e) {
+    // Firebase mungkin belum setup di web/desktop, diabaikan
+  }
+
   await AddressService.init();
 
   // Link "Reset Password" dari email membuka aplikasi dengan sesi pemulihan:
@@ -52,6 +67,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Washora',
       navigatorKey: appNavigatorKey,
+      navigatorObservers: [NavTapShield.instance],
       debugShowCheckedModeBanner: false,
       // Izinkan geser (carousel, list horizontal) dengan mouse & trackpad di web/desktop
       // Warna bilah navigasi Android untuk semua layar (layar yang punya
@@ -62,7 +78,7 @@ class MyApp extends StatelessWidget {
           systemNavigationBarDividerColor: Colors.transparent,
           systemNavigationBarIconBrightness: Brightness.dark,
         ),
-        child: child ?? const SizedBox.shrink(),
+        child: NavTapShield.wrap(child ?? const SizedBox.shrink()),
       ),
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: PointerDeviceKind.values.toSet(),

@@ -62,6 +62,7 @@ class OrderModel {
   final String? memberPlan;
   final bool memberFreeDelivery;
   final int pointsUsed;
+  final DateTime? paidAt; // ditandai lunas oleh mitra
 
   /// Batas waktu pelanggan boleh mengajukan klaim kerusakan setelah menerima cucian
   static const Duration claimWindow = Duration(hours: 48);
@@ -120,6 +121,7 @@ class OrderModel {
     this.memberPlan,
     this.memberFreeDelivery = false,
     this.pointsUsed = 0,
+    this.paidAt,
   });
 
   factory OrderModel.fromMap(Map<String, dynamic> data, String id) {
@@ -157,6 +159,7 @@ class OrderModel {
       memberPlan: data['member_plan'],
       memberFreeDelivery: data['member_free_delivery'] == true,
       pointsUsed: (data['points_used'] as num?)?.toInt() ?? 0,
+      paidAt: data['paid_at'] != null ? DateTime.tryParse(data['paid_at'].toString())?.toLocal() : null,
     );
   }
 

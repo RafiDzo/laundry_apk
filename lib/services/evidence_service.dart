@@ -158,14 +158,66 @@ class EvidenceService {
     required String shopId,
     required String description,
     required List<XFile> photos,
+    String? category,
+    List<String> affectedItems = const [],
+    String? requestedResolution,
+    int? requestedAmount,
   }) async {
     await uploadPhotos(orderId: orderId, stage: 'claim', files: photos);
-    await _db.from('damage_claims').insert({
+    final base = {
       'order_id': orderId,
       'user_id': _db.auth.currentUser?.id,
       'shop_id': shopId,
       'description': description.trim(),
-    });
+    };
+    try {
+      await _db.from('damage_claims').insert({
+        ...base,
+        'category': ?category,
+        'affected_items': affectedItems,
+        'requested_resolution': ?requestedResolution,
+        'requested_amount': ?requestedAmount,
+      });
+    } on PostgrestException catch (e) {
+      // Kolom lanjutan belum dibuat (SQL belum dijalankan): kirim klaim dasar
+      if (e.code == '42703' || e.code == 'PGRST204') {
+        await _db.from('damage_claims').insert(base);
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  /// Batas ganti rugi (10x harga layanan item terdampak), dihitung server
+  Future<int?> compensationCap(String orderId, List<String> items) async {
+    try {
+      final r = await _db.rpc('claim_compensation_cap', params: {'p_order_id': orderId, 'p_items': items});
+      return r is num ? r.toInt() : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Mitra: penyelesaian sudah dituntaskan. Hasil: OK | NOT_ALLOWED | NOT_APPROVED
+  Future<String> resolveClaim(String claimId, String? note) async {
+    final res = await _db.rpc('resolve_claim', params: {'p_claim_id': claimId, 'p_note': note});
+    return res as String;
+  }
+
+  /// Pelanggan: naikkan ke Washora setelah 2x24 jam tanpa respons.
+  /// Hasil: OK | NOT_ALLOWED | NOT_PENDING | TOO_EARLY
+  Future<String> escalateClaim(String claimId) async {
+    final res = await _db.rpc('escalate_claim', params: {'p_claim_id': claimId});
+    return res as String;
+  }
+
+  Future<ClaimStats?> claimStats(String shopId) async {
+    try {
+      final r = await _db.rpc('claim_stats', params: {'p_shop_id': shopId});
+      return r == null ? null : ClaimStats.fromJson(Map<String, dynamic>.from(r as Map));
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Stream realtime klaim di outlet mitra (terbaru di atas)

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:async' show FutureOr;
+import '../utils/tap_guard.dart';
 import '../widgets/quick_snackbar.dart';
 import 'dart:math' as math;
 
@@ -11,6 +13,8 @@ import 'owner_promo_screen.dart';
 import 'chat_room_screen.dart';
 import 'owner_reviews_screen.dart';
 import 'receipt_print_screen.dart';
+import 'wallet_screen.dart';
+import '../services/wallet_service.dart';
 import '../widgets/chat_widgets.dart';
 import '../widgets/washora_logo.dart';
 import 'package:flutter/services.dart';
@@ -40,9 +44,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
 
   bool _isLoading = true;
   String? _loadError;
+  String? _shopLoadErrorDetail;
   String _activeFilter = 'Semua';
 
   ShopModel? _shop;
+  int _walletRefresh = 0;
   List<OrderModel> _orders = [];
   StreamSubscription<List<OrderModel>>? _ordersSub;
 
@@ -120,14 +126,6 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     }).toList();
   }
 
-  // Token & mesin IoT masih simulasi (belum ada integrasi perangkat)
-  int _tokenCount = 857;
-  final List<Map<String, dynamic>> _iotMachines = [
-    {'name': 'Washer 01 (Front Load)', 'type': 'Cuci', 'status': 'Running', 'time': '18 Menit', 'progress': 0.65},
-    {'name': 'Washer 02 (Top Load)', 'type': 'Cuci', 'status': 'Idle', 'time': 'Tersedia', 'progress': 0.0},
-    {'name': 'Dryer 01 (Gas 10 Kg)', 'type': 'Kering', 'status': 'Running', 'time': '24 Menit', 'progress': 0.40},
-    {'name': 'Dryer 02 (Gas 10 Kg)', 'type': 'Kering', 'status': 'Idle', 'time': 'Tersedia', 'progress': 0.0},
-  ];
 
   @override
   void initState() {
@@ -146,8 +144,36 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   }
 
   Future<void> _loadShopAndOrders() async {
-    final shop = await _supabaseService.getMyShop();
+    if (mounted && _loadError != null) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
+    ShopModel? shop;
+    Object? lastError;
+    // Dicoba hingga 3x: koneksi HP sering belum stabil sesaat setelah login
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        shop = await _supabaseService.fetchMyShopStrict();
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e;
+        debugPrint('Gagal memuat outlet (percobaan ${attempt + 1}): $e');
+        await Future.delayed(Duration(seconds: 1 + attempt * 2));
+        if (!mounted) return;
+      }
+    }
     if (!mounted) return;
+    if (lastError != null) {
+      setState(() {
+        _isLoading = false;
+        _loadError = 'shop_error';
+        _shopLoadErrorDetail = '$lastError';
+      });
+      return;
+    }
     if (shop == null) {
       setState(() {
         _isLoading = false;
@@ -1001,7 +1027,19 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   }
 
   // 3. Petty Cash Modal
+  bool _pettyOpening = false;
+
   Future<void> _showPettyCashModal() async {
+    if (_pettyOpening) return;
+    _pettyOpening = true;
+    try {
+      await _showPettyCashModalInner();
+    } finally {
+      _pettyOpening = false;
+    }
+  }
+
+  Future<void> _showPettyCashModalInner() async {
     final shop = _shop;
     if (shop == null) {
       _showSnack('Akun belum terhubung ke outlet.', color: const Color(0xFFEF4444));
@@ -1249,113 +1287,6 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     return result ?? false;
   }
 
-  // 4. Modal Sistem IoT Mesin (simulasi)
-  void _showIoTModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0077B6).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.sensors_rounded, color: Color(0xFF0077B6)),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Sistem IoT Smart Laundry', style: GoogleFonts.quicksand(fontSize: 17, fontWeight: FontWeight.bold)),
-                          Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(color: Color(0xFFF59E0B), shape: BoxShape.circle),
-                              ),
-                              const SizedBox(width: 6),
-                              Text('Mode Simulasi (belum terhubung ke mesin)', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFD97706))),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
-                ],
-              ),
-              const SizedBox(height: 20),
-              ..._iotMachines.map((m) {
-                final isRunning = m['status'] == 'Running';
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        m['type'] == 'Cuci' ? Icons.local_laundry_service : Icons.cyclone,
-                        color: isRunning ? const Color(0xFF0077B6) : Colors.grey,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(m['name'], style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
-                            Text('Status: ${m['status']} (${m['time']})', style: GoogleFonts.inter(fontSize: 11, color: Colors.grey)),
-                          ],
-                        ),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isRunning ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        onPressed: () {
-                          setModalState(() {
-                            m['status'] = isRunning ? 'Idle' : 'Running';
-                            m['time'] = isRunning ? 'Tersedia' : '30 Menit';
-                          });
-                        },
-                        child: Text(
-                          isRunning ? 'Stop Mesin' : 'Nyalakan',
-                          style: GoogleFonts.inter(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   // 5. Modal Daftar Customer (diringkas dari pesanan toko)
   void _showCustomerModal() {
     final Map<String, Map<String, dynamic>> customers = {};
@@ -1424,6 +1355,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                         final c = list[idx];
                         final name = c['name'] as String;
                         return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             CircleAvatar(
                               radius: 18,
@@ -1440,15 +1372,13 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                                 children: [
                                   Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
                                   Text(
-                                    '${c['phone'] ?? 'Tanpa nomor'} • ${c['orders']} pesanan',
+                                    '${c['orders']} pesanan • ${_formatRupiah(c['total'] as int)}',
                                     style: GoogleFonts.inter(fontSize: 11, color: Colors.grey),
                                   ),
+                                  const SizedBox(height: 4),
+                                  _customerPhoneRow(c['phone'] as String?, name),
                                 ],
                               ),
-                            ),
-                            Text(
-                              _formatRupiah(c['total'] as int),
-                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: const Color(0xFF0077B6)),
                             ),
                           ],
                         );
@@ -1458,6 +1388,45 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Nomor WA pelanggan + tombol salin & chat (untuk keperluan mendesak)
+  Widget _customerPhoneRow(String? phone, String name) {
+    final raw = phone?.trim() ?? '';
+    final wa = _normalizePhone(raw);
+    if (wa == null) {
+      return Text('Nomor WA belum ada (pesanan lama / tidak diisi)',
+          style: GoogleFonts.inter(fontSize: 11.5, color: const Color(0xFF94A3B8), fontStyle: FontStyle.italic));
+    }
+    return Row(
+      children: [
+        const Icon(Icons.phone_rounded, size: 14, color: Color(0xFF16A34A)),
+        const SizedBox(width: 4),
+        Flexible(
+          child: SelectableText(raw,
+              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A))),
+        ),
+        const SizedBox(width: 4),
+        IconButton(
+          tooltip: 'Salin nomor',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF64748B)),
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: raw));
+            _showSnack('Nomor $name disalin');
+          },
+        ),
+        IconButton(
+          tooltip: 'Chat WhatsApp',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.chat_rounded, size: 18, color: Color(0xFF16A34A)),
+          onPressed: () async {
+            final ok = await launchUrl(Uri.parse('https://wa.me/$wa'), mode: LaunchMode.externalApplication);
+            if (!ok && mounted) _showSnack('WhatsApp tidak bisa dibuka', color: const Color(0xFFEF4444));
+          },
+        ),
+      ],
     );
   }
 
@@ -1505,11 +1474,18 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
 
                       if (_loadError == 'no_shop')
                         _buildRegisterShopForm()
+                      else if (_loadError == 'shop_error')
+                        _buildShopLoadError()
                       else ...[
                         // 2. QUICK METRIC STATS
                         _buildMetricsRow(),
 
                         const SizedBox(height: 16),
+
+                        // 2b. SALDO KOMISI
+                        _buildWalletCard(),
+
+                        const SizedBox(height: 12),
 
                         // 3. MENU GRID
                         _buildMenuGrid(),
@@ -1551,6 +1527,69 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   style: GoogleFonts.quicksand(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
+      ),
+    );
+  }
+
+  /// Data outlet gagal dimuat (bukan berarti belum punya outlet)
+  Widget _buildShopLoadError() {
+    final detail = _shopLoadErrorDetail ?? '';
+    final offline = RegExp(r'Socket|host lookup|Connection|timed out|Network', caseSensitive: false).hasMatch(detail);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFFECACA)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(offline ? Icons.wifi_off_rounded : Icons.error_outline_rounded, color: const Color(0xFFDC2626)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text('Data outlet gagal dimuat',
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A))),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              offline
+                  ? 'HP tidak bisa terhubung ke server. Periksa koneksi internet (data seluler / Wi-Fi), lalu coba lagi.'
+                  : 'Outlet Anda tetap aman, hanya gagal dibaca. Coba lagi; jika terus gagal, kirim pesan di bawah ke admin.',
+              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569)),
+            ),
+            if (detail.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
+                child: SelectableText(detail,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 11.5, color: Color(0xFF334155))),
+              ),
+            ],
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: FilledButton.icon(
+                onPressed: _loadShopAndOrders,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0077B6),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Coba lagi'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2089,121 +2128,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       ],
                     ),
                   ),
-
-                  // Right: Cash Topup Card (matching user screenshot)
-                  GestureDetector(
-                    onTap: () {
-                      setState(() => _tokenCount += 100);
-                      _showSnack('Simulasi: +100 token (belum ada pembayaran sungguhan).');
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFBBF7D0)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.08),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.payments_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    'Topup',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF059669),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(
-                                    Icons.arrow_forward_ios_rounded,
-                                    size: 8,
-                                    color: Color(0xFF059669),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                'Token $_tokenCount',
-                                style: GoogleFonts.quicksand(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF065F46),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
 
-              const SizedBox(height: 14),
-
-              // IoT Shortcut Banner
-              GestureDetector(
-                onTap: _showIoTModal,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFBEB),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFFDE68A)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF59E0B),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.wifi_rounded, size: 12, color: Colors.white),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Smart Machine Control (Mode Simulasi)',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFFB45309),
-                          ),
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, size: 18, color: Color(0xFFB45309)),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -2355,7 +2282,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             childAspectRatio: 0.82,
             children: [
               // Warna = kelompok fungsi: biru transaksi, kuning keuangan,
-              // ungu outlet, tosca perangkat
+              // ungu outlet
               _buildMenuItem(
                 title: 'Order',
                 icon: Icons.add_shopping_cart_rounded,
@@ -2416,16 +2343,71 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 color: _menuViolet,
                 onTap: () => _showShopSettingsModal(initialTab: 0),
               ),
-              _buildMenuItem(
-                title: 'Mesin IoT',
-                icon: Icons.sensors_rounded,
-                color: _menuTeal,
-                onTap: _showIoTModal,
-              ),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  /// Kartu ringkas saldo komisi. Warna mengikuti status: biru masa pengenalan,
+  /// hijau aman, kuning menipis/minus, merah outlet berhenti menerima pesanan.
+  Widget _buildWalletCard() {
+    final shop = _shop;
+    if (shop == null) return const SizedBox.shrink();
+    return FutureBuilder<WalletSummary>(
+      key: ValueKey('wallet-${shop.id}-$_walletRefresh'),
+      future: WalletService().summary(shop.id),
+      builder: (context, snap) {
+        if (snap.hasError || !snap.hasData) return const SizedBox.shrink();
+        final s = snap.data!;
+        final (color, soft, title, desc) = walletStateStyle(s);
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () async {
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => WalletScreen(shop: shop)));
+                if (mounted) setState(() => _walletRefresh++);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: color.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(12)),
+                      child: Icon(Icons.account_balance_wallet_outlined, color: color),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Saldo komisi ${_formatRupiah(s.balance)}',
+                              style: GoogleFonts.inter(fontSize: 13.5, fontWeight: FontWeight.w800, color: const Color(0xFF0F172A))),
+                          Text(title, style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
+                        ],
+                      ),
+                    ),
+                    Text(s.state == WalletState.ok || s.state == WalletState.intro ? 'Lihat' : 'Isi saldo',
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF0077B6))),
+                    const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -2543,20 +2525,19 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   static const _menuBlue = Color(0xFF0077B6);
   static const _menuAmber = Color(0xFFD97706);
   static const _menuViolet = Color(0xFF7C3AED);
-  static const _menuTeal = Color(0xFF0D9488);
 
   Widget _buildMenuItem({
     required String title,
     required IconData icon,
     required Color color,
-    required VoidCallback onTap,
+    required FutureOr<void> Function() onTap,
     int badge = 0,
   }) {
     final deep = Color.lerp(color, Colors.black, 0.18)!;
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: TapGuard.wrap(onTap),
         borderRadius: BorderRadius.circular(16),
         child: Ink(
           decoration: BoxDecoration(
@@ -2673,8 +2654,6 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 color: const Color(0xFFF59E0B),
                 bgColor: const Color(0xFFFFFBEB),
                 borderColor: const Color(0xFFFDE68A),
-                filterTarget: 'Antrean',
-                isSelected: _activeFilter == 'Antrean',
               ),
             ),
             const SizedBox(width: 8),
@@ -2686,8 +2665,6 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 color: const Color(0xFF0284C7),
                 bgColor: const Color(0xFFF0F9FF),
                 borderColor: const Color(0xFFBAE6FD),
-                filterTarget: 'Proses',
-                isSelected: _activeFilter == 'Proses',
               ),
             ),
             const SizedBox(width: 8),
@@ -2699,8 +2676,6 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 color: const Color(0xFF10B981),
                 bgColor: const Color(0xFFECFDF5),
                 borderColor: const Color(0xFFA7F3D0),
-                filterTarget: 'Siap Diambil',
-                isSelected: _activeFilter == 'Siap Diambil',
               ),
             ),
             const SizedBox(width: 8),
@@ -2712,8 +2687,6 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 color: const Color(0xFFE11D48),
                 bgColor: const Color(0xFFFFF1F2),
                 borderColor: const Color(0xFFFECDD3),
-                filterTarget: 'Deadline',
-                isSelected: _activeFilter == 'Deadline',
               ),
             ),
           ],
@@ -2729,45 +2702,19 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     required Color color,
     required Color bgColor,
     required Color borderColor,
-    required String filterTarget,
-    required bool isSelected,
   }) {
-    return InkWell(
-      onTap: () {
-        setState(() {
-          if (_activeFilter == filterTarget) {
-            _activeFilter = 'Semua';
-          } else {
-            _activeFilter = filterTarget;
-          }
-        });
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+    return Container(
         constraints: const BoxConstraints(minHeight: 84),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         decoration: BoxDecoration(
-          // Warna lembut sesuai status (bukan abu-abu datar); lebih pekat saat dipilih
+          // Warna lembut sesuai status (bukan abu-abu datar)
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: isSelected ? [bgColor, bgColor] : [bgColor, Colors.white],
+            colors: [bgColor, Colors.white],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? color : borderColor.withValues(alpha: 0.6),
-            width: isSelected ? 1.6 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.16),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : null,
+          border: Border.all(color: borderColor.withValues(alpha: 0.6)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -2833,14 +2780,13 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
                 fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                color: isSelected ? color : const Color(0xFF334155),
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF334155),
               ),
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   // =========================================================================

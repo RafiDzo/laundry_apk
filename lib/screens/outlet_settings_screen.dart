@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/shop_model.dart';
+import '../payments/qris.dart';
+import '../payments/qris_scanner.dart';
 import '../services/geo_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/quick_snackbar.dart';
@@ -34,6 +36,7 @@ class _OutletSettingsScreenState extends State<OutletSettingsScreen> {
   late final _phone = TextEditingController(text: widget.shop.phone);
   late final _desc = TextEditingController(text: widget.shop.description);
   late final _address = TextEditingController(text: widget.shop.address);
+  late final _qris = TextEditingController(text: widget.shop.qrisPayload);
   final _mapController = MapController();
 
   LatLng? _location;
@@ -53,7 +56,7 @@ class _OutletSettingsScreenState extends State<OutletSettingsScreen> {
     if (widget.shop.hasLocation) {
       _location = LatLng(widget.shop.latitude!, widget.shop.longitude!);
     }
-    for (final c in [_name, _phone, _desc, _address]) {
+    for (final c in [_name, _phone, _desc, _address, _qris]) {
       c.addListener(_markDirty);
     }
   }
@@ -64,11 +67,37 @@ class _OutletSettingsScreenState extends State<OutletSettingsScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _phone, _desc, _address]) {
+    for (final c in [_name, _phone, _desc, _address, _qris]) {
       c.dispose();
     }
     _mapController.dispose();
     super.dispose();
+  }
+
+  bool _readingQris = false;
+
+  void _applyQris(String payload) {
+    setState(() => _qris.text = payload);
+    _toast('QRIS terbaca: ${Qris.merchantName(payload)}. Tekan Simpan untuk menyimpan.',
+        color: const Color(0xFF15803D));
+  }
+
+  Future<void> _scanQrisCamera() async {
+    final payload = await scanQrisWithCamera(context);
+    if (payload != null && mounted) _applyQris(payload);
+  }
+
+  Future<void> _scanQrisGallery() async {
+    setState(() => _readingQris = true);
+    final r = await readQrisFromGallery();
+    if (!mounted) return;
+    setState(() => _readingQris = false);
+    if (r == null) return;
+    if (r.ok) {
+      _applyQris(r.payload!);
+    } else {
+      _toast(r.error!, color: const Color(0xFFDC2626));
+    }
   }
 
   void _toast(String msg, {Color color = _kInk}) {
@@ -141,6 +170,12 @@ class _OutletSettingsScreenState extends State<OutletSettingsScreen> {
       _toast('Nama outlet wajib diisi', color: const Color(0xFFDC2626));
       return;
     }
+    final qris = _qris.text.trim();
+    final qrisErr = qris.isEmpty ? null : Qris.validate(qris);
+    if (qrisErr != null) {
+      _toast('QRIS outlet tidak valid: $qrisErr', color: const Color(0xFFDC2626));
+      return;
+    }
     FocusScope.of(context).unfocus();
     setState(() => _saving = true);
     try {
@@ -154,6 +189,7 @@ class _OutletSettingsScreenState extends State<OutletSettingsScreen> {
         'phone': _phone.text.trim(),
         'description': _desc.text.trim(),
         'image_url': imageUrl,
+        'qris_payload': qris,
         if (_location != null) 'latitude': _location!.latitude,
         if (_location != null) 'longitude': _location!.longitude,
       };
@@ -362,6 +398,92 @@ class _OutletSettingsScreenState extends State<OutletSettingsScreen> {
                   style: GoogleFonts.inter(fontSize: 12, color: _kMuted),
                 ),
               ),
+            ],
+          ),
+        ),
+        _section('QRIS Outlet', Icons.qr_code_2_rounded),
+        _card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Scan stiker QRIS statis outlet atau pilih gambarnya dari galeri. Pelanggan yang memilih QRIS akan '
+                'melihat QR dengan total pesanan terisi otomatis, dan pembayaran masuk langsung ke rekening/e-wallet Anda.',
+                style: GoogleFonts.inter(fontSize: 12, color: _kMuted),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _readingQris ? null : _scanQrisCamera,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _kBrand,
+                        minimumSize: const Size.fromHeight(46),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+                      label: const Text('Scan Kamera'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _readingQris ? null : _scanQrisGallery,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _kBrand,
+                        minimumSize: const Size.fromHeight(46),
+                        side: const BorderSide(color: _kBrand),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: _readingQris
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.photo_library_outlined, size: 20),
+                      label: Text(_readingQris ? 'Membaca...' : 'Dari Galeri'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text('Atau tempel teks QRIS secara manual:',
+                  style: GoogleFonts.inter(fontSize: 11.5, color: _kMuted, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _qris,
+                minLines: 2,
+                maxLines: 4,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                decoration: InputDecoration(
+                  hintText: '00020101021126...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  suffixIcon: _qris.text.isEmpty
+                      ? null
+                      : IconButton(tooltip: 'Hapus', icon: const Icon(Icons.close_rounded), onPressed: () => _qris.clear()),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Builder(builder: (context) {
+                final text = _qris.text.trim();
+                if (text.isEmpty) {
+                  return Text('Belum diatur. Gunakan tombol Scan Kamera atau Dari Galeri di atas.',
+                      style: GoogleFonts.inter(fontSize: 11.5, color: _kMuted));
+                }
+                final err = Qris.validate(text);
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(err == null ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                        size: 16, color: err == null ? const Color(0xFF16A34A) : const Color(0xFFDC2626)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        err ?? 'QRIS valid: ${Qris.merchantName(text)}${Qris.merchantCity(text).isEmpty ? '' : ', ${Qris.merchantCity(text)}'}',
+                        style: GoogleFonts.inter(fontSize: 12, color: err == null ? const Color(0xFF15803D) : const Color(0xFFDC2626)),
+                      ),
+                    ),
+                  ],
+                );
+              }),
             ],
           ),
         ),

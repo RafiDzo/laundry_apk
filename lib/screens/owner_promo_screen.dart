@@ -1262,7 +1262,7 @@ class _PromoFormSheetState extends State<_PromoFormSheet> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       childAspectRatio: 2.3,
-      children: ShopPromoType.values.map((t) {
+      children: ShopPromoType.values.where((t) => t != ShopPromoType.cashback).map((t) {
         final isSelected = _type == t;
         return InkWell(
           onTap: () => setState(() => _type = t),
