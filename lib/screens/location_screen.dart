@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../widgets/washora_logo.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -286,7 +287,7 @@ class _LocationScreenState extends State<LocationScreen> with TickerProviderStat
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.local_laundry_service, color: Color(0xFF00B4D8), size: 18),
+                        const WashoraLogo(size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'WASHORA',

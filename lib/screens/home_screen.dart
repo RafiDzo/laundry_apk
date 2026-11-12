@@ -599,27 +599,21 @@ class _HomeScreenState extends State<HomeScreen>
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0077E6), Color(0xFF0284C7)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFF0077E6).withValues(alpha: 0.12),
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF0077E6).withValues(alpha: 0.35),
+                      color: const Color(0xFF0077E6).withValues(alpha: 0.18),
                       blurRadius: 14,
                       offset: const Offset(0, 5),
-                    ),
-                    BoxShadow(
-                      color: const Color(0xFF0284C7).withValues(alpha: 0.18),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: const Center(
-                  child: WashoraLogo(size: 28, color: Colors.white),
+                  child: WashoraLogo(size: 32),
                 ),
               ),
               const SizedBox(width: 12),

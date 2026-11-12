@@ -17,23 +17,13 @@ class WashoraLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = Image.asset(
+    return Image.asset(
       assetPath,
       width: size,
       height: size,
-      color: color ?? Colors.white,
+      color: color,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.high,
-    );
-    if (color != null) return image;
-    return ShaderMask(
-      blendMode: BlendMode.srcIn,
-      shaderCallback: (bounds) => const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: brandGradient,
-      ).createShader(bounds),
-      child: image,
     );
   }
 }

@@ -156,9 +156,7 @@ class NotificationService {
   /// Hapus token FCM dari Supabase saat user logout
   Future<void> unregisterUserToken() async {
     try {
-      if (_currentToken == null) {
-        _currentToken = await _fcm.getToken();
-      }
+      _currentToken ??= await _fcm.getToken();
       if (_currentToken != null) {
         await Supabase.instance.client.rpc(
           'delete_fcm_token',

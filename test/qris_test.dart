@@ -9,16 +9,7 @@ import 'package:laundry_apk/payments/qris_scanner.dart';
 String sampleStatic() {
   String tlv(String t, String v) => '$t${v.length.toString().padLeft(2, '0')}$v';
   final merchant = tlv('00', 'ID.CO.CONTOH.WWW') + tlv('01', '936000000000000001') + tlv('02', 'ID1234567890123') + tlv('03', 'UMI');
-  final body = tlv('00', '01') +
-      tlv('01', '11') +
-      tlv('26', merchant) +
-      tlv('52', '7210') +
-      tlv('53', '360') +
-      tlv('58', 'ID') +
-      tlv('59', 'LAUNDRY CONTOH') +
-      tlv('60', 'SURABAYA') +
-      tlv('61', '60111') +
-      '6304';
+  final body = '${tlv('00', '01')}${tlv('01', '11')}${tlv('26', merchant)}${tlv('52', '7210')}${tlv('53', '360')}${tlv('58', 'ID')}${tlv('59', 'LAUNDRY CONTOH')}${tlv('60', 'SURABAYA')}${tlv('61', '60111')}6304';
   return body + Qris.crc16(body);
 }
 

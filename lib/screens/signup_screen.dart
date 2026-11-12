@@ -265,27 +265,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
           width: 96,
           height: 96,
           decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF0077E6), Color(0xFF0284C7)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            border: Border.all(
+              color: const Color(0xFF0077E6).withValues(alpha: 0.12),
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0077E6).withValues(alpha: 0.40),
+                color: const Color(0xFF0077E6).withValues(alpha: 0.20),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
-              BoxShadow(
-                color: const Color(0xFF0284C7).withValues(alpha: 0.18),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
             ],
           ),
-          child: Center(
-            child: const WashoraLogo(size: 60, color: Colors.white),
+          child: const Center(
+            child: WashoraLogo(size: 64),
           ),
         ),
 

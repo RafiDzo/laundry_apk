@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:async' show FutureOr;
 import '../utils/tap_guard.dart';
 import '../widgets/quick_snackbar.dart';
 import 'dart:math' as math;
