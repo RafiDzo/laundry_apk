@@ -78,7 +78,7 @@ class MyApp extends StatelessWidget {
           systemNavigationBarDividerColor: Colors.transparent,
           systemNavigationBarIconBrightness: Brightness.dark,
         ),
-        child: NavTapShield.wrap(child ?? const SizedBox.shrink()),
+        child: _PhoneFrame(child: NavTapShield.wrap(child ?? const SizedBox.shrink())),
       ),
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: PointerDeviceKind.values.toSet(),
@@ -97,5 +97,38 @@ class MyApp extends StatelessWidget {
       ),
       home: const LoadingScreen(),
     );
+  }
+}
+
+/// Di layar lebar (Windows/web/tablet) tampilan dibatasi selebar ponsel Android
+/// dan diletakkan di tengah, supaya semua layar tidak membentang fullscreen.
+class _PhoneFrame extends StatelessWidget {
+  final Widget child;
+  const _PhoneFrame({required this.child});
+
+  static const double _phoneWidth = 412;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
+      if (c.maxWidth <= _phoneWidth + 40) return child;
+      final mq = MediaQuery.of(context);
+      final size = Size(_phoneWidth, c.maxHeight);
+      return ColoredBox(
+        color: const Color(0xFF0F172A),
+        child: Center(
+          child: SizedBox(
+            width: size.width,
+            height: size.height,
+            child: ClipRect(
+              child: MediaQuery(
+                data: mq.copyWith(size: size),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 }
