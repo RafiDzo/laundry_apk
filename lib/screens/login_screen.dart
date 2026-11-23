@@ -9,6 +9,7 @@ import 'forgot_password_screen.dart';
 import 'location_screen.dart';
 import 'home_screen.dart';
 import 'owner_dashboard_screen.dart';
+import 'role_selection_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final String role;
@@ -126,8 +127,33 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Kembali ke layar pilihan peran (Pengguna / Mitra). Jika layar ini dibuka
+  /// tanpa RoleSelectionScreen di bawahnya (mis. setelah reset password),
+  /// ganti dengan RoleSelectionScreen agar pengguna tetap bisa memilih peran.
+  void _backToRoleSelection() {
+    final nav = Navigator.of(context);
+    if (nav.canPop()) {
+      nav.pop();
+    } else {
+      nav.pushReplacement(
+        MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
+    return PopScope(
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _backToRoleSelection();
+      },
+      child: _buildScaffold(),
+    );
+  }
+
+  Widget _buildScaffold() {
     return Scaffold(
       backgroundColor: boneWhite,
       body: Stack(
@@ -382,6 +408,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+
+          // Tombol kembali ke pilihan peran (Pengguna / Mitra)
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12, top: 8),
+              child: Material(
+                color: Colors.white,
+                shape: const CircleBorder(),
+                elevation: 0,
+                child: IconButton(
+                  tooltip: 'Kembali ke pilihan peran',
+                  icon: Icon(Icons.arrow_back_rounded, color: darkNavy),
+                  onPressed: _backToRoleSelection,
+                ),
+              ),
             ),
           ),
         ],
